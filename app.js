@@ -13,7 +13,6 @@ class SpriteAnimator {
     this.isSitting = false;
     this.interval = null;
 
-    // Reset sit timer on user interaction
     ['touchstart', 'click', 'scroll'].forEach(evt => 
       window.addEventListener(evt, () => this.resetSitTimer(), { passive: true })
     );
@@ -25,40 +24,38 @@ class SpriteAnimator {
     this.sitTimer = 0;
     if (this.isSitting) {
       this.isSitting = false;
-      this.tick(); // Instantly stand up
+      this.tick(); 
     }
   }
 
   start() {
-    // Run at 5 FPS for that authentic retro feel
     this.interval = setInterval(() => {
-      this.sitTimer += 0.2; // 200ms per tick
-      if (this.sitTimer > 10) this.isSitting = true; // Sit after 10 seconds of no tapping
+      this.sitTimer += 0.2; 
+      if (this.sitTimer > 10) this.isSitting = true; 
       this.tick();
     }, 200);
   }
 
   mount() {
-    // Find all runner sprite containers dynamically injected into the views
     this.sprites = Array.from(document.querySelectorAll('.runner-sprite-el')).map(el => {
       const runnerName = el.dataset.runner.split(' ')[0].toLowerCase();
       return {
         el: el,
         runner: runnerName,
         baseState: el.dataset.state || 'idle',
-        frame: 0
+        frame: 0,
+        isBroken: false
       };
     });
 
-    // Find the Van sprite container (if on the Driver View)
     this.vanSprite = document.getElementById('driver-van-sprite');
-
     this.tick();
   }
 
   tick() {
-    // 1. Animate Runners
     this.sprites.forEach(s => {
+      if (s.isBroken) return; 
+
       let action = s.baseState;
       if (action !== 'run') {
         action = this.isSitting ? 'sit' : 'idle';
@@ -73,33 +70,23 @@ class SpriteAnimator {
         s.el.src = imgPath;
       }
       
-      // Infinite Loop Protection Added Here!
       s.el.onerror = () => {
-        s.el.onerror = null; // Kills the infinite reload loop if file is missing
-        if (action === 'sit') {
-            s.el.src = `assets/${s.runner}/idle/down/1.png`; 
-        } else if (s.frame > 1) {
-            s.frame = 1; 
-            s.el.src = `assets/${s.runner}/${action}/down/1.png`;
-        }
+        s.el.onerror = null; 
+        s.isBroken = true; 
+        s.el.style.opacity = '0'; 
       };
     });
 
-    // 2. Animate the 3x3 Van Sheet
     if (this.vanSprite) {
       this.vanFrame = (this.vanFrame + 1) % 9;
       const col = this.vanFrame % 3;
       const row = Math.floor(this.vanFrame / 3);
-      
-      // CSS background-position scales cleanly with 0%, 50%, and 100% for a 3x3 grid!
       this.vanSprite.style.backgroundPosition = `${col * 50}% ${row * 50}%`;
     }
   }
 }
 
-// Initialize global sprite engine
 window.spriteAnimator = new SpriteAnimator();
-
 
 // --- Persisted runner selection ---
 function getMyRunnerId() {
@@ -127,8 +114,6 @@ function renderView(viewId) {
     case 'viewSettings': renderSettingsView(); break;
   }
   renderHeader();
-  
-  // Re-mount sprites after HTML injection!
   window.spriteAnimator.mount();
 }
 
@@ -163,12 +148,10 @@ function renderHeader() {
 // --- RACE SNAKE VISUALIZER ---
 function generateRaceSnakeSVG(currentLeg) {
   const lats = RACE_CONFIG.legs.map(l => l.gps.lat);
-  // We keep latitude to give the trail an organic vertical wiggle
   const minLat = Math.min(...lats), maxLat = Math.max(...lats);
 
   const w = 400, h = 100, p = 15;
   
-  // SCHEMATIC PROJECTION:
   const points = RACE_CONFIG.legs.map((l, i) => {
     const x = p + (i / 35) * (w - 2 * p);
     const y = h - (p + ((l.gps.lat - minLat) / (maxLat - minLat)) * (h - 2 * p));
@@ -177,18 +160,15 @@ function generateRaceSnakeSVG(currentLeg) {
 
   let svg = `<svg viewBox="0 0 ${w} ${h}" style="width:100%; height:auto; display:block; overflow:visible;">`;
 
-  // Draw underlying gray track (Thinner stroke: 2)
   const pathData = points.map((pt, i) => `${i === 0 ? 'M' : 'L'} ${pt.x},${pt.y}`).join(' ');
   svg += `<path d="${pathData}" fill="none" stroke="var(--surface-3)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />`;
 
-  // Draw completed progress path (Thinner stroke: 2)
   const completedPoints = points.slice(0, currentLeg); 
   if (completedPoints.length > 1) {
     const compPath = completedPoints.map((pt, i) => `${i === 0 ? 'M' : 'L'} ${pt.x},${pt.y}`).join(' ');
     svg += `<path d="${compPath}" fill="none" stroke="url(#snakeGrad)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />`;
   }
 
-  // Left-to-Right gradient
   svg += `<defs>
             <linearGradient id="snakeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
               <stop offset="0%" stop-color="var(--accent)" />
@@ -196,7 +176,6 @@ function generateRaceSnakeSVG(currentLeg) {
             </linearGradient>
           </defs>`;
 
-  // Draw exchange nodes
   points.forEach((pt, i) => {
     const legNum = i + 1;
     const isMajor = legNum % 6 === 0;
@@ -236,19 +215,15 @@ function renderRaceView() {
   const prefillSrc = `assets/${runnerFirstName}/run/down/1.png`;
 
   let html = `
-    <!-- Race Snake SVG Module -->
     <div class="race-snake-container">
       <div class="snake-title">Course Progress (Mt. Hood &rarr; Seaside)</div>
       ${generateRaceSnakeSVG(current)}
     </div>
 
-    <!-- Active Runner -->
     <div class="card card-glow-blue active-runner-card">
       <div style="display:flex;gap:16px;align-items:center;position:relative;z-index:1;margin-bottom:16px;">
-        
-        <!-- Sprite Animator Box (Pre-filled SRC to prevent flash) -->
         <div style="width: 72px; height: 72px; border-radius: var(--radius-sm); background: rgba(0,0,0,0.2); border: 1px solid var(--border); display: flex; justify-content: center; align-items: center; flex-shrink: 0;">
-          <img class="runner-sprite-el" data-runner="${runner.name}" data-state="run" src="${prefillSrc}" style="width: 56px; height: 56px; image-rendering: pixelated; object-fit: contain;">
+          <img class="runner-sprite-el" data-runner="${runner.name}" data-state="run" src="${prefillSrc}" onerror="this.style.opacity='0'" style="width: 56px; height: 56px; image-rendering: pixelated; object-fit: contain; transition: opacity 0.2s;">
         </div>
 
         <div style="flex:1;">
@@ -280,7 +255,6 @@ function renderRaceView() {
       </div>
     </div>
 
-    <!-- Handoff Controls -->
     <div class="handoff-container">
       ${!engine.state.raceStarted ? `
         <button class="btn-handoff btn-start" onclick="startRace()">▶ Start Race — Go Runner 1!</button>
@@ -297,7 +271,6 @@ function renderRaceView() {
       </div>
     </div>
 
-    <!-- Driver Quick Link -->
     <div style="margin-top:14px;">
       <a href="https://www.google.com/maps/dir/?api=1&destination=${leg.gps.lat},${leg.gps.lng}"
          target="_blank"
@@ -311,7 +284,6 @@ function renderRaceView() {
       </a>
     </div>
 
-    <!-- Next Major Exchange -->
     ${nextMajorExch ? `
     <div class="major-exchange-callout">
       <div class="major-exchange-callout-title">Next Major Van Exchange</div>
@@ -319,7 +291,6 @@ function renderRaceView() {
       <div class="major-exchange-callout-sub">${nextMajorExch.legData.exchangeAddress}</div>
     </div>` : ''}
 
-    <!-- Up Next -->
     <div class="section-title">Coming Up</div>
   `;
 
@@ -350,9 +321,7 @@ function renderDriverView() {
   let html = `
     <div class="card card-glow-green">
       <div class="driver-destination">
-        <!-- THE DRIVING VAN ANIMATION -->
         <div id="driver-van-sprite" class="driver-van-sprite"></div>
-
         <div class="driver-destination-label">Driving to Exchange ${current}</div>
         <div class="driver-destination-address">${leg.exchangeAddress}</div>
         <a href="${gpsUrl}" target="_blank" class="btn-navigate">
@@ -382,7 +351,6 @@ function renderDriverView() {
 }
 
 // --- MY LEGS / FOR YOU VIEW ---
-
 function getContextMode(runnerId) {
   if (!engine.state.raceStarted) return { mode: 'PRE_RACE', nextLeg: null, legsUntil: null, minutesUntil: null };
 
@@ -493,13 +461,6 @@ function renderMyLegsView() {
           <span class="pace-label">/mi</span>
           <span class="pace-est">= ${RaceEngine.formatDuration(summary.estimatedTime)}</span>
         </div>` : ''}
-
-        ${!isComplete && leg.gps ? `
-        <a href="https://www.google.com/maps/dir/?api=1&destination=${leg.gps.lat},${leg.gps.lng}"
-           target="_blank"
-           style="display:inline-flex;align-items:center;gap:6px;margin-top:10px;padding:8px 14px;border-radius:8px;background:var(--surface-2);color:var(--accent);font-size:12px;font-weight:600;text-decoration:none;border:1px solid var(--border);">
-          📍 Navigate to Exchange ${leg.leg}
-        </a>` : ''}
       </div>
     `;
   });
@@ -512,13 +473,11 @@ function renderContextHero(context, runner, runnerId) {
   const spriteState = mode === 'RUNNING' ? 'run' : 'idle';
   const runnerFirstName = runner.name.split(' ')[0].toLowerCase();
   
-  // Pre-fill the exact SRC to stop the flash!
   const prefillSrc = `assets/${runnerFirstName}/${spriteState}/down/1.png`;
 
-  // The custom pixel art avatar box!
   const spriteBox = `
     <div style="width: 100px; height: 100px; border-radius: var(--radius-sm); background: rgba(0,0,0,0.2); border: 1px solid var(--border); display: flex; justify-content: center; align-items: center; flex-shrink: 0;">
-      <img class="runner-sprite-el" data-runner="${runner.name}" data-state="${spriteState}" src="${prefillSrc}" style="width: 80px; height: 80px; image-rendering: pixelated; object-fit: contain;">
+      <img class="runner-sprite-el" data-runner="${runner.name}" data-state="${spriteState}" src="${prefillSrc}" onerror="this.style.opacity='0'" style="width: 80px; height: 80px; image-rendering: pixelated; object-fit: contain; transition: opacity 0.2s;">
     </div>
   `;
 
@@ -690,8 +649,16 @@ function setFilter(f) {
   renderFullRaceView();
 }
 
-// --- SETTINGS VIEW ---
+// --- SETTINGS VIEW (NEW TIME CORRECTION ADDED HERE) ---
 function renderSettingsView() {
+  
+  // Find completed legs to populate the edit dropdown
+  const completedLegs = [];
+  for (let i = 1; i <= 36; i++) {
+    if (engine.isLegComplete(i)) completedLegs.push(i);
+  }
+  const fixLegOptions = completedLegs.map(l => `<option value="${l}">Leg ${l}</option>`).join('');
+
   document.getElementById('viewSettings').innerHTML = `
     <div class="setting-card">
       <h3>Race Info</h3>
@@ -700,6 +667,28 @@ function renderSettingsView() {
       <p style="font-size:13px;color:var(--text-muted);">AFT: 29:46:10 (Anticipated Finish Time)</p>
       <p style="font-size:13px;color:var(--text-muted);">Course: 199.07 miles • 36 legs • 12 runners</p>
     </div>
+
+    <!-- NEW TIME CORRECTION MODULE -->
+    <div class="setting-card">
+      <h3>Fix a Wrong Entry</h3>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">Accidentally clicked early or entered the wrong time? Fix it here.</p>
+      
+      <button class="btn-danger" style="margin-bottom:16px; border-color:var(--orange); color:var(--orange);" onclick="undoLastHandoff()">↩ Undo Last Handoff</button>
+
+      ${completedLegs.length > 0 ? `
+      <div style="border-top: 1px solid var(--border); padding-top: 12px;">
+        <label style="font-size:11px;color:var(--text-muted);">EDIT PAST TIME:</label>
+        <div style="display:flex; gap:8px; margin-top:6px;">
+          <select id="fixLegSelect" class="input-time" style="flex: 0.5; font-size:13px;">
+            ${fixLegOptions}
+          </select>
+          <input type="time" class="input-time" id="fixLegTime" step="60" style="flex: 1;">
+        </div>
+        <button class="btn-manual" style="width:100%; margin-top:8px; background: rgba(59, 158, 255, 0.1);" onclick="fixLoggedTime()">Update Time</button>
+      </div>
+      ` : ''}
+    </div>
+
     <div class="setting-card">
       <h3>Your Runner</h3>
       <select class="runner-picker" onchange="setMyRunnerId(parseInt(this.value)); renderSettingsView();">
@@ -709,14 +698,11 @@ function renderSettingsView() {
       </select>
       <p style="font-size:12px;color:var(--text-muted);">This sets which runner's legs you see in "My Legs" view.</p>
     </div>
+    
     <div class="setting-card">
       <h3>Data Storage</h3>
       <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">All data stored locally on device. Works fully offline — critical for the no-coverage zone (legs 19–32).</p>
       <button class="btn-danger" onclick="confirmReset()">Reset All Race Data</button>
-    </div>
-    <div class="setting-card">
-      <h3>About</h3>
-      <p style="font-size:12px;color:var(--text-muted);line-height:1.6;">Built by the team captain. 13 years of Hood to Coast. No more fat-thumbing the Google Sheet at 3am with no signal on a gravel road in rural Oregon.</p>
     </div>
   `;
 }
@@ -752,11 +738,75 @@ function logManualHandoff() {
   renderView('viewRace');
 }
 
+// --- NEW CORRECTION FUNCTIONS ---
+function undoLastHandoff() {
+  if (!confirm('Are you sure you want to undo the last handoff?')) return;
+  
+  const current = engine.getCurrentLeg();
+  
+  // If race is totally finished
+  if (current === 36 && engine.isLegComplete(36)) {
+    delete engine.state.actuals['leg_36_end'];
+    engine.saveState();
+    switchView('viewRace');
+    return;
+  }
+  
+  // If race hasn't even started
+  if (current === 1 && !engine.state.raceStarted) return;
+  
+  // If Leg 1 has started but not finished
+  if (current === 1 && engine.state.raceStarted) {
+    delete engine.state.actuals['leg_1_start'];
+    engine.state.raceStarted = false;
+    engine.saveState();
+    switchView('viewRace');
+    return;
+  }
+  
+  // Normal undo logic
+  const legToUndo = current - 1;
+  delete engine.state.actuals[`leg_${legToUndo}_end`];
+  delete engine.state.actuals[`leg_${current}_start`];
+  engine.state.currentLeg = legToUndo;
+  engine.saveState();
+  
+  switchView('viewRace');
+}
+
+function fixLoggedTime() {
+  const legStr = document.getElementById('fixLegSelect').value;
+  const timeStr = document.getElementById('fixLegTime').value;
+  if (!legStr || !timeStr) {
+    alert("Please enter a valid time.");
+    return;
+  }
+
+  const legNum = parseInt(legStr);
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  const raceStart = new Date(RACE_CONFIG.startTime);
+  let logTime = new Date(raceStart);
+  logTime.setHours(hours, minutes, 0, 0);
+
+  // If the time is before the race start, assume it's the next day
+  if (logTime.getTime() < engine.getRaceStartMs() - 3600000) { 
+    logTime.setDate(logTime.getDate() + 1);
+  }
+
+  // Mutate state directly so it edits the time WITHOUT changing the current runner!
+  engine.state.actuals[`leg_${legNum}_end`] = logTime.getTime();
+  if (legNum < 36) {
+    engine.state.actuals[`leg_${legNum + 1}_start`] = logTime.getTime();
+  }
+  engine.saveState();
+
+  alert(`Leg ${legNum} time successfully updated!`);
+  renderView('viewSettings');
+}
+
 function changeMyRunner(val) {
   setMyRunnerId(parseInt(val));
   renderMyLegsView();
-  // BUG FIX: Explicitly tell the SpriteEngine to re-find the new runner image
-  // immediately after the dropdown triggers the HTML change!
   window.spriteAnimator.mount();
 }
 
@@ -775,7 +825,6 @@ function confirmReset() {
 }
 
 // --- HELPERS ---
-
 function getNextMajorExchange(currentLeg) {
   const majorLegs = [6, 12, 18, 24, 30];
   for (const ml of majorLegs) {
