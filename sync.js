@@ -27,13 +27,40 @@ function updateSyncStatus(msg) {
     if (el) el.innerText = msg;
 }
 
-// 4. The Cloud Listener: Pulls data instantly when the other van updates it
+// 4. The Cloud Pusher: Sends local updates to Firebase
+function pushToCloud() {
+    if (!engine.state.lastUpdated) {
+        engine.state.lastUpdated = Date.now(); 
+    }
+    
+    updateSyncStatus(`📡 Syncing...`);
+    
+    // Set 'merge: true' so we don't accidentally delete fields we didn't touch
+    raceDocRef.set({
+        actuals: engine.state.actuals || {},
+        paces: engine.state.paces || {},
+        currentLeg: engine.state.currentLeg || 1,
+        raceStarted: engine.state.raceStarted || false,
+        lastUpdated: engine.state.lastUpdated
+    }, { merge: true })
+    .then(() => {
+        const timeStr = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        updateSyncStatus(`☁️ Last Sync: ${timeStr}`);
+        console.log("☁️ Sync Pushed to Cloud");
+    })
+    .catch(err => {
+        updateSyncStatus(`📡 Offline (Saved to outbox)`);
+        console.log("📡 Saved offline. Will sync when connection returns.");
+    });
+}
+
+// 5. The Cloud Listener: Pulls data instantly when the other van updates it
 raceDocRef.onSnapshot((doc) => {
     if (doc.exists) {
         const cloudState = doc.data();
         
         // Only override local data if the cloud has a NEWER timestamp
-        if (!engine.state.lastUpdated || cloudState.lastUpdated > engine.state.lastUpdated) {
+        if (!engine.state.lastUpdated || (cloudState.lastUpdated && cloudState.lastUpdated > engine.state.lastUpdated)) {
              engine.state.actuals = cloudState.actuals || {};
              engine.state.paces = cloudState.paces || {};
              engine.state.currentLeg = cloudState.currentLeg || 1;
@@ -51,43 +78,28 @@ raceDocRef.onSnapshot((doc) => {
              const timeStr = new Date(cloudState.lastUpdated).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
              updateSyncStatus(`☁️ Last Sync: ${timeStr}`);
              console.log("📥 Cloud Sync Received & Interface Updated!");
+        } else {
+             // Cloud and local are in sync
+             const timeStr = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+             updateSyncStatus(`☁️ Last Sync: ${timeStr}`);
         }
+    } else {
+        // THE FIX: Brand new database! Seed it with our starting local state.
+        console.log("☁️ Database empty! Seeding with local state...");
+        pushToCloud();
     }
 }, (error) => {
     updateSyncStatus(`📡 Offline (Queuing updates)`);
 });
 
-// 5. The Cloud Pusher: Sends local updates to Firebase
-function pushToCloud() {
-    engine.state.lastUpdated = Date.now(); // Stamp it so the other van knows it's new
-    
-    updateSyncStatus(`📡 Syncing...`);
-    
-    // Set 'merge: true' so we don't accidentally delete fields we didn't touch
-    raceDocRef.set({
-        actuals: engine.state.actuals,
-        paces: engine.state.paces,
-        currentLeg: engine.state.currentLeg,
-        raceStarted: engine.state.raceStarted,
-        lastUpdated: engine.state.lastUpdated
-    }, { merge: true })
-    .then(() => {
-        const timeStr = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-        updateSyncStatus(`☁️ Last Sync: ${timeStr}`);
-        console.log("☁️ Sync Pushed to Cloud");
-    })
-    .catch(err => {
-        updateSyncStatus(`📡 Offline (Saved to outbox)`);
-        console.log("📡 Saved offline. Will sync when connection returns.");
-    });
-}
-
 // 6. Hijack the Engine: Automatically push to cloud whenever a time is logged!
-const originalSaveState = engine.saveState.bind(engine);
-engine.saveState = function() {
-    originalSaveState(); // Still save to local storage immediately
-    pushToCloud();       // Then quietly send it to Firebase in the background
-};
+if (typeof engine !== 'undefined' && typeof engine.saveState === 'function') {
+    const originalSaveState = engine.saveState.bind(engine);
+    engine.saveState = function() {
+        originalSaveState(); // Still save to local storage immediately
+        pushToCloud();       // Then quietly send it to Firebase in the background
+    };
+}
 
 // Handle Browser Network Events
 window.addEventListener('online', () => updateSyncStatus(`📡 Reconnecting...`));
