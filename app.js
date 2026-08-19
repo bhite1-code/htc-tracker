@@ -377,7 +377,6 @@ function renderMyLegsView() {
   const context = getContextMode(myId);
   const myLegs = engine.getRunnerLegs(myId);
 
-  // PACE PROMPT DETECTION - Checks if they've saved a pace on this device
   const hasSetPace = localStorage.getItem(`htc_paces_set_${myId}`) === 'true';
   let pacePromptHtml = '';
   
@@ -490,6 +489,14 @@ function renderMyLegsView() {
   document.getElementById('viewMyLegs').innerHTML = html;
 }
 
+// NEW: Universal time formatter for massive pre-race wait times
+function formatTimeLeft(totalMins) {
+  if (totalMins < 60) return `${totalMins} min`;
+  const h = Math.floor(totalMins / 60);
+  const m = totalMins % 60;
+  return `${h}h ${m}m`;
+}
+
 function renderContextHero(context, runner, runnerId) {
   const { mode, nextLeg, legsUntil, minutesUntil } = context;
   const spriteState = mode === 'RUNNING' ? 'run' : 'idle';
@@ -541,14 +548,15 @@ function renderContextHero(context, runner, runnerId) {
 
     case 'NEXT_UP': {
       const summary = engine.getLegSummary(nextLeg.leg);
+      const pulseClass = minutesUntil <= 15 ? 'imminent' : '';
       return `
-        <div class="card card-glow-orange" style="display:flex; align-items:center; gap: 16px; text-align:left;">
+        <div class="card card-glow-orange ${pulseClass}" style="display:flex; align-items:center; gap: 16px; text-align:left;">
           ${spriteBox}
           <div style="flex:1;">
             <div style="font-size:13px;color:var(--orange);font-weight:700;text-transform:uppercase;letter-spacing:1px;">You're Next</div>
             <div style="font-size:24px;font-weight:800;margin:4px 0;">Leg ${nextLeg.leg}</div>
             <div style="font-size:13px;color:var(--text-muted);">
-              ${minutesUntil > 0 ? `~${minutesUntil} min until handoff` : 'Handoff imminent!'}
+              ${minutesUntil > 0 ? `~${formatTimeLeft(minutesUntil)} until handoff` : 'Handoff imminent!'}
             </div>
             <div style="font-size:12px;color:var(--text-muted);margin-top:6px;">
               ${nextLeg.distance} mi • ${RaceEngine.difficultyLabel(nextLeg.difficulty)}
@@ -564,7 +572,7 @@ function renderContextHero(context, runner, runnerId) {
           ${spriteBox}
           <div style="flex:1;">
             <div style="font-size:13px;color:var(--accent);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">On Deck</div>
-            <div style="font-size:20px;font-weight:700;margin:4px 0;">Leg ${nextLeg.leg} in ~${minutesUntil} min</div>
+            <div style="font-size:20px;font-weight:700;margin:4px 0;">Leg ${nextLeg.leg} in ~${formatTimeLeft(minutesUntil)}</div>
             <div style="font-size:12px;color:var(--text-muted);">
               ${legsUntil} leg${legsUntil > 1 ? 's' : ''} before yours. Start getting ready.
             </div>
@@ -577,15 +585,12 @@ function renderContextHero(context, runner, runnerId) {
 
     case 'RESTING': {
       const summary = engine.getLegSummary(nextLeg.leg);
-      const hoursUntil = Math.floor(minutesUntil / 60);
-      const minsRemainder = minutesUntil % 60;
-      const timeStr = hoursUntil > 0 ? `${hoursUntil}h ${minsRemainder}m` : `${minutesUntil} min`;
       return `
         <div class="card" style="border-color:var(--border); display:flex; align-items:center; gap: 16px; text-align:left;">
           ${spriteBox}
           <div style="flex:1;">
             <div style="font-size:13px;font-weight:600;color:var(--text-dim);">Next up: Leg ${nextLeg.leg}</div>
-            <div style="font-size:22px;font-weight:800;color:var(--text-muted);margin:4px 0;">${timeStr} away</div>
+            <div style="font-size:22px;font-weight:800;color:var(--text-muted);margin:4px 0;">${formatTimeLeft(minutesUntil)} away</div>
             <div style="font-size:12px;color:var(--text-muted);">
               Projected: ~${RaceEngine.formatTime(summary.projectedStart)}
             </div>
@@ -671,9 +676,10 @@ function setFilter(f) {
   renderFullRaceView();
 }
 
-// --- SETTINGS VIEW ---
+// --- SETTINGS VIEW (NEW TIME CORRECTION ADDED HERE) ---
 function renderSettingsView() {
   
+  // Find completed legs to populate the edit dropdown
   const completedLegs = [];
   for (let i = 1; i <= 36; i++) {
     if (engine.isLegComplete(i)) completedLegs.push(i);
@@ -689,6 +695,7 @@ function renderSettingsView() {
       <p style="font-size:13px;color:var(--text-muted);">Course: 199.07 miles • 36 legs • 12 runners</p>
     </div>
 
+    <!-- NEW TIME CORRECTION MODULE -->
     <div class="setting-card">
       <h3>Fix a Wrong Entry</h3>
       <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">Accidentally clicked early or entered the wrong time? Fix it here.</p>
@@ -729,11 +736,13 @@ function renderSettingsView() {
 
 // --- ACTIONS ---
 function startRace() {
+  if (navigator.vibrate) navigator.vibrate([200]); 
   engine.logStart(1);
   renderView('viewRace');
 }
 
 function logHandoffNow() {
+  if (navigator.vibrate) navigator.vibrate([100, 50, 100]); 
   engine.logHandoff(engine.getCurrentLeg());
   renderView('viewRace');
 }
@@ -823,7 +832,6 @@ function changeMyRunner(val) {
   window.spriteAnimator.mount();
 }
 
-// --- NEW PACE SETUP FUNCTIONS ---
 function applyBasePace(runnerId) {
   const min = parseInt(document.getElementById('basePaceMin').value);
   const sec = parseInt(document.getElementById('basePaceSec').value);
@@ -838,7 +846,6 @@ function applyBasePace(runnerId) {
     engine.setPace(l.leg, min, sec);
   });
   
-  // Mark the prompt as completed
   localStorage.setItem(`htc_paces_set_${runnerId}`, 'true');
   renderMyLegsView();
   renderHeader();
@@ -847,7 +854,6 @@ function applyBasePace(runnerId) {
 function updatePace(legNum, min, sec) {
   engine.setPace(legNum, parseInt(min) || 10, parseInt(sec) || 0);
   
-  // If they manually edit an individual leg, mark the prompt as completed too
   const myId = getMyRunnerId();
   localStorage.setItem(`htc_paces_set_${myId}`, 'true');
   
@@ -856,17 +862,13 @@ function updatePace(legNum, min, sec) {
   window.spriteAnimator.mount();
 }
 
-// --- SAFE RESET LOGIC ---
 function confirmReset() {
   if (confirm('Reset ALL logged handoff times? \n\n(Don\'t worry, your custom runner paces will NOT be deleted).')) {
     
-    // Backup the custom paces sub-object before nuking the engine state
     const savedPaces = engine.state.paces ? JSON.parse(JSON.stringify(engine.state.paces)) : {};
     
-    // Nuke the race actuals
     engine.resetState();
     
-    // Restore the paces directly back into the fresh state
     if (Object.keys(savedPaces).length > 0) {
       engine.state.paces = savedPaces;
     }
@@ -930,7 +932,6 @@ function renderLegRow(s) {
 // --- INIT ---
 renderView('viewRace');
 
-// Register service worker
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js')
     .then(() => console.log('✓ Offline ready'))
