@@ -739,6 +739,7 @@
       <div>
         <h1>Hood to Coast 2026</h1>
         <div class="header-sub" id="headerSub">Fri Aug 28 • 5:35 AM Start</div>
+        <div class="header-sub" id="syncStatus" style="color: var(--accent); margin-top: 4px; font-weight: 700;">📡 Initializing...</div>
       </div>
     </div>
     <div class="race-progress-bar">
@@ -803,8 +804,13 @@
     </button>
   </nav>
 
+  <!-- Firebase Cloud Firestore (Compat CDN) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
   <script src="data.js"></script>
   <script src="engine.js"></script>
+  <script src="sync.js"></script> <!-- The New Cloud Bridge -->
   <script src="app.js"></script>
 </body>
 </html>
