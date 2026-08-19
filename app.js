@@ -74,13 +74,13 @@ class SpriteAnimator {
       }
       
       // Infinite Loop Protection Added Here!
-      s.el.onerror = function() {
-        this.onerror = null; // Kills the infinite reload loop if file is missing
+      s.el.onerror = () => {
+        s.el.onerror = null; // Kills the infinite reload loop if file is missing
         if (action === 'sit') {
-            this.src = `assets/${s.runner}/idle/down/1.png`; 
+            s.el.src = `assets/${s.runner}/idle/down/1.png`; 
         } else if (s.frame > 1) {
             s.frame = 1; 
-            this.src = `assets/${s.runner}/${action}/down/1.png`;
+            s.el.src = `assets/${s.runner}/${action}/down/1.png`;
         }
       };
     });
@@ -755,6 +755,8 @@ function logManualHandoff() {
 function changeMyRunner(val) {
   setMyRunnerId(parseInt(val));
   renderMyLegsView();
+  // BUG FIX: Explicitly tell the SpriteEngine to re-find the new runner image
+  // immediately after the dropdown triggers the HTML change!
   window.spriteAnimator.mount();
 }
 
