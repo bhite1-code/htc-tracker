@@ -8,7 +8,7 @@
   <meta name="theme-color" content="#0a0e17">
   <link rel="manifest" href="./manifest.json">
   <link rel="apple-touch-icon" href="./icon-192.png">
-  <title>HTC 2026 — Race Tracker</title>
+  <title>Deuces Wild - Hood to Coast 2026</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -41,14 +41,41 @@
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
+    /* --- GLOBAL BACKGROUND & CRT SCANLINES --- */
     body {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-      background: var(--bg);
+      background-color: var(--bg);
+      background-image: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+      background-size: 100% 4px, 6px 100%;
+      background-attachment: fixed;
       color: var(--text);
       min-height: 100vh;
       padding-bottom: 90px;
       -webkit-font-smoothing: antialiased;
       overflow-x: hidden;
+    }
+
+    /* --- CRT TEXTURE SANDWICH LAYERING --- */
+    .header, .nav, .card, .race-snake-container, .race-leg-row, .setting-card {
+      position: relative;
+    }
+
+    /* Draws the texture over the card backgrounds but under the content */
+    .header::after, .nav::after, .card::after, .race-snake-container::after, .race-leg-row::after, .setting-card::after {
+      content: " ";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+      background-size: 100% 4px, 6px 100%;
+      border-radius: inherit;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Pops all text, SVGs, and sprites directly above the scanlines */
+    .header > *, .nav > *, .card > *, .race-snake-container > *, .race-leg-row > *, .setting-card > * {
+      position: relative;
+      z-index: 1;
     }
 
     /* --- HEADER --- */
@@ -189,6 +216,16 @@
     .card-glow-orange {
       border-color: rgba(255, 170, 43, 0.3);
       background: linear-gradient(135deg, rgba(255, 170, 43, 0.05), var(--surface));
+    }
+
+    /* --- IMMINENT WARNING PULSE --- */
+    .card-glow-orange.imminent {
+      animation: pulseWarning 1.5s infinite;
+    }
+    @keyframes pulseWarning {
+      0% { box-shadow: 0 0 0 0 rgba(255, 170, 43, 0.4); }
+      70% { box-shadow: 0 0 0 12px rgba(255, 170, 43, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(255, 170, 43, 0); }
     }
 
     /* --- ACTIVE RUNNER CARD --- */
@@ -488,6 +525,14 @@
       50% { r: 8; opacity: 0.3; }
       100% { r: 3; opacity: 1; }
     }
+    .snake-path-animate {
+      stroke-dasharray: 1000;
+      stroke-dashoffset: 1000;
+      animation: drawSnake 1.5s ease-out forwards;
+    }
+    @keyframes drawSnake {
+      to { stroke-dashoffset: 0; }
+    }
 
     /* --- FULL RACE VIEW --- */
     .race-filter-row {
@@ -737,7 +782,7 @@
     <div class="header-brand">
       <div class="header-logo">HTC</div>
       <div>
-        <h1>Hood to Coast 2026</h1>
+        <h1>Deuces Wild - Hood to Coast 2026</h1>
         <div class="header-sub" id="headerSub">Fri Aug 28 • 5:35 AM Start</div>
         <div class="header-sub" id="syncStatus" style="color: var(--accent); margin-top: 4px; font-weight: 700;">📡 Initializing...</div>
       </div>
@@ -810,7 +855,7 @@
 
   <script src="data.js"></script>
   <script src="engine.js"></script>
-  <script src="app.js"></script> <!-- This MUST load before sync.js! -->
+  <script src="app.js"></script> 
   <script src="sync.js"></script> 
 </body>
 </html>

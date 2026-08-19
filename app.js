@@ -166,7 +166,8 @@ function generateRaceSnakeSVG(currentLeg) {
   const completedPoints = points.slice(0, currentLeg); 
   if (completedPoints.length > 1) {
     const compPath = completedPoints.map((pt, i) => `${i === 0 ? 'M' : 'L'} ${pt.x},${pt.y}`).join(' ');
-    svg += `<path d="${compPath}" fill="none" stroke="url(#snakeGrad)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />`;
+    // NEW: Added snake-path-animate class here!
+    svg += `<path d="${compPath}" fill="none" stroke="url(#snakeGrad)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" class="snake-path-animate" />`;
   }
 
   svg += `<defs>
@@ -519,8 +520,10 @@ function renderContextHero(context, runner, runnerId) {
 
     case 'NEXT_UP': {
       const summary = engine.getLegSummary(nextLeg.leg);
+      // NEW: Apply the 'imminent' pulse class if under 15 minutes!
+      const pulseClass = minutesUntil <= 15 ? 'imminent' : '';
       return `
-        <div class="card card-glow-orange" style="display:flex; align-items:center; gap: 16px; text-align:left;">
+        <div class="card card-glow-orange ${pulseClass}" style="display:flex; align-items:center; gap: 16px; text-align:left;">
           ${spriteBox}
           <div style="flex:1;">
             <div style="font-size:13px;color:var(--orange);font-weight:700;text-transform:uppercase;letter-spacing:1px;">You're Next</div>
@@ -709,11 +712,15 @@ function renderSettingsView() {
 
 // --- ACTIONS ---
 function startRace() {
+  // NEW: Long Buzz Haptic!
+  if (navigator.vibrate) navigator.vibrate([200]); 
   engine.logStart(1);
   renderView('viewRace');
 }
 
 function logHandoffNow() {
+  // NEW: Double-Tap Buzz Haptic!
+  if (navigator.vibrate) navigator.vibrate([100, 50, 100]); 
   engine.logHandoff(engine.getCurrentLeg());
   renderView('viewRace');
 }
@@ -744,7 +751,6 @@ function undoLastHandoff() {
   
   const current = engine.getCurrentLeg();
   
-  // If race is totally finished
   if (current === 36 && engine.isLegComplete(36)) {
     delete engine.state.actuals['leg_36_end'];
     engine.saveState();
@@ -752,10 +758,8 @@ function undoLastHandoff() {
     return;
   }
   
-  // If race hasn't even started
   if (current === 1 && !engine.state.raceStarted) return;
   
-  // If Leg 1 has started but not finished
   if (current === 1 && engine.state.raceStarted) {
     delete engine.state.actuals['leg_1_start'];
     engine.state.raceStarted = false;
@@ -764,7 +768,6 @@ function undoLastHandoff() {
     return;
   }
   
-  // Normal undo logic
   const legToUndo = current - 1;
   delete engine.state.actuals[`leg_${legToUndo}_end`];
   delete engine.state.actuals[`leg_${current}_start`];
@@ -788,12 +791,10 @@ function fixLoggedTime() {
   let logTime = new Date(raceStart);
   logTime.setHours(hours, minutes, 0, 0);
 
-  // If the time is before the race start, assume it's the next day
   if (logTime.getTime() < engine.getRaceStartMs() - 3600000) { 
     logTime.setDate(logTime.getDate() + 1);
   }
 
-  // Mutate state directly so it edits the time WITHOUT changing the current runner!
   engine.state.actuals[`leg_${legNum}_end`] = logTime.getTime();
   if (legNum < 36) {
     engine.state.actuals[`leg_${legNum + 1}_start`] = logTime.getTime();
