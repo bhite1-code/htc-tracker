@@ -73,12 +73,14 @@ class SpriteAnimator {
         s.el.src = imgPath;
       }
       
-      s.el.onerror = () => {
+      // Infinite Loop Protection Added Here!
+      s.el.onerror = function() {
+        this.onerror = null; // Kills the infinite reload loop if file is missing
         if (action === 'sit') {
-            s.el.src = `assets/${s.runner}/idle/down/1.png`; 
+            this.src = `assets/${s.runner}/idle/down/1.png`; 
         } else if (s.frame > 1) {
             s.frame = 1; 
-            s.el.src = `assets/${s.runner}/${action}/down/1.png`;
+            this.src = `assets/${s.runner}/${action}/down/1.png`;
         }
       };
     });
@@ -167,8 +169,6 @@ function generateRaceSnakeSVG(currentLeg) {
   const w = 400, h = 100, p = 15;
   
   // SCHEMATIC PROJECTION:
-  // X is perfectly spaced left-to-right based on leg number (un-bunches everything)
-  // Y retains the geographic latitude to keep the trail shape
   const points = RACE_CONFIG.legs.map((l, i) => {
     const x = p + (i / 35) * (w - 2 * p);
     const y = h - (p + ((l.gps.lat - minLat) / (maxLat - minLat)) * (h - 2 * p));
@@ -200,8 +200,6 @@ function generateRaceSnakeSVG(currentLeg) {
   points.forEach((pt, i) => {
     const legNum = i + 1;
     const isMajor = legNum % 6 === 0;
-    
-    // Slightly smaller dots to match the thinner path
     const r = isMajor ? 4 : 2; 
 
     let fill = 'var(--surface-2)';
@@ -234,6 +232,9 @@ function renderRaceView() {
   const leg = summary.legData;
   const nextMajorExch = getNextMajorExchange(current);
 
+  const runnerFirstName = runner.name.split(' ')[0].toLowerCase();
+  const prefillSrc = `assets/${runnerFirstName}/run/down/1.png`;
+
   let html = `
     <!-- Race Snake SVG Module -->
     <div class="race-snake-container">
@@ -245,9 +246,9 @@ function renderRaceView() {
     <div class="card card-glow-blue active-runner-card">
       <div style="display:flex;gap:16px;align-items:center;position:relative;z-index:1;margin-bottom:16px;">
         
-        <!-- Sprite Animator Box -->
+        <!-- Sprite Animator Box (Pre-filled SRC to prevent flash) -->
         <div style="width: 72px; height: 72px; border-radius: var(--radius-sm); background: rgba(0,0,0,0.2); border: 1px solid var(--border); display: flex; justify-content: center; align-items: center; flex-shrink: 0;">
-          <img class="runner-sprite-el" data-runner="${runner.name}" data-state="run" src="" style="width: 56px; height: 56px; image-rendering: pixelated; object-fit: contain;">
+          <img class="runner-sprite-el" data-runner="${runner.name}" data-state="run" src="${prefillSrc}" style="width: 56px; height: 56px; image-rendering: pixelated; object-fit: contain;">
         </div>
 
         <div style="flex:1;">
@@ -509,11 +510,15 @@ function renderMyLegsView() {
 function renderContextHero(context, runner, runnerId) {
   const { mode, nextLeg, legsUntil, minutesUntil } = context;
   const spriteState = mode === 'RUNNING' ? 'run' : 'idle';
+  const runnerFirstName = runner.name.split(' ')[0].toLowerCase();
+  
+  // Pre-fill the exact SRC to stop the flash!
+  const prefillSrc = `assets/${runnerFirstName}/${spriteState}/down/1.png`;
 
   // The custom pixel art avatar box!
   const spriteBox = `
     <div style="width: 100px; height: 100px; border-radius: var(--radius-sm); background: rgba(0,0,0,0.2); border: 1px solid var(--border); display: flex; justify-content: center; align-items: center; flex-shrink: 0;">
-      <img class="runner-sprite-el" data-runner="${runner.name}" data-state="${spriteState}" src="" style="width: 80px; height: 80px; image-rendering: pixelated; object-fit: contain;">
+      <img class="runner-sprite-el" data-runner="${runner.name}" data-state="${spriteState}" src="${prefillSrc}" style="width: 80px; height: 80px; image-rendering: pixelated; object-fit: contain;">
     </div>
   `;
 
@@ -750,8 +755,6 @@ function logManualHandoff() {
 function changeMyRunner(val) {
   setMyRunnerId(parseInt(val));
   renderMyLegsView();
-  // BUG FIX: Explicitly tell the SpriteEngine to re-find the new runner image
-  // immediately after the dropdown triggers the HTML change!
   window.spriteAnimator.mount();
 }
 
