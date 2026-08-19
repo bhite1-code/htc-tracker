@@ -2,7 +2,6 @@
 const engine = new RaceEngine(RACE_CONFIG);
 
 // --- SPRITE ANIMATOR ENGINE ---
-// Changed 'sit: 2' to 'sit: 1' to freeze the sitting motion on a single frame!
 const SPRITE_CONFIG = { idle: 2, run: 8, sit: 1 };
 
 class SpriteAnimator {
