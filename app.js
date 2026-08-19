@@ -166,8 +166,7 @@ function generateRaceSnakeSVG(currentLeg) {
   const completedPoints = points.slice(0, currentLeg); 
   if (completedPoints.length > 1) {
     const compPath = completedPoints.map((pt, i) => `${i === 0 ? 'M' : 'L'} ${pt.x},${pt.y}`).join(' ');
-    // NEW: Added snake-path-animate class here!
-    svg += `<path d="${compPath}" fill="none" stroke="url(#snakeGrad)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" class="snake-path-animate" />`;
+    svg += `<path d="${compPath}" fill="none" stroke="url(#snakeGrad)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />`;
   }
 
   svg += `<defs>
@@ -378,6 +377,27 @@ function renderMyLegsView() {
   const context = getContextMode(myId);
   const myLegs = engine.getRunnerLegs(myId);
 
+  // PACE PROMPT DETECTION - Checks if they've saved a pace on this device
+  const hasSetPace = localStorage.getItem(`htc_paces_set_${myId}`) === 'true';
+  let pacePromptHtml = '';
+  
+  if (!hasSetPace) {
+    pacePromptHtml = `
+      <div class="card card-glow-orange" style="margin-top:24px; padding: 16px; border-color: var(--orange);">
+        <div style="font-weight: 800; color: var(--orange); margin-bottom: 8px;">⚠️ Action Required: Set Your Paces</div>
+        <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px; line-height: 1.4;">
+          You haven't set your anticipated pace yet. Enter a base pace below to apply it to all your legs, or adjust them individually below. <strong>These save automatically and won't delete if we reset the race.</strong>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center;">
+            <input type="number" id="basePaceMin" placeholder="Min" style="width: 65px; padding: 10px; background: var(--bg-base); border: 1px solid var(--border); color: white; border-radius: 6px; font-size: 16px; text-align: center;">
+            <span style="font-weight:bold;">:</span>
+            <input type="number" id="basePaceSec" placeholder="Sec" style="width: 65px; padding: 10px; background: var(--bg-base); border: 1px solid var(--border); color: white; border-radius: 6px; font-size: 16px; text-align: center;">
+            <button class="btn-primary" style="padding: 10px 16px; flex: 1; font-size: 14px;" onclick="applyBasePace(${myId})">Apply Base Pace</button>
+        </div>
+      </div>
+    `;
+  }
+
   let html = `
     <select class="runner-picker" id="myRunnerSelect" onchange="changeMyRunner(this.value)">
       ${RACE_CONFIG.runners.map(r => `
@@ -389,6 +409,7 @@ function renderMyLegsView() {
   `;
 
   html += renderContextHero(context, runner, myId);
+  html += pacePromptHtml; 
   html += `<div class="section-title" style="margin-top:24px;">Your 3 Legs</div>`;
 
   myLegs.forEach(leg => {
@@ -520,10 +541,8 @@ function renderContextHero(context, runner, runnerId) {
 
     case 'NEXT_UP': {
       const summary = engine.getLegSummary(nextLeg.leg);
-      // NEW: Apply the 'imminent' pulse class if under 15 minutes!
-      const pulseClass = minutesUntil <= 15 ? 'imminent' : '';
       return `
-        <div class="card card-glow-orange ${pulseClass}" style="display:flex; align-items:center; gap: 16px; text-align:left;">
+        <div class="card card-glow-orange" style="display:flex; align-items:center; gap: 16px; text-align:left;">
           ${spriteBox}
           <div style="flex:1;">
             <div style="font-size:13px;color:var(--orange);font-weight:700;text-transform:uppercase;letter-spacing:1px;">You're Next</div>
@@ -652,10 +671,9 @@ function setFilter(f) {
   renderFullRaceView();
 }
 
-// --- SETTINGS VIEW (NEW TIME CORRECTION ADDED HERE) ---
+// --- SETTINGS VIEW ---
 function renderSettingsView() {
   
-  // Find completed legs to populate the edit dropdown
   const completedLegs = [];
   for (let i = 1; i <= 36; i++) {
     if (engine.isLegComplete(i)) completedLegs.push(i);
@@ -671,7 +689,6 @@ function renderSettingsView() {
       <p style="font-size:13px;color:var(--text-muted);">Course: 199.07 miles • 36 legs • 12 runners</p>
     </div>
 
-    <!-- NEW TIME CORRECTION MODULE -->
     <div class="setting-card">
       <h3>Fix a Wrong Entry</h3>
       <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">Accidentally clicked early or entered the wrong time? Fix it here.</p>
@@ -705,22 +722,18 @@ function renderSettingsView() {
     <div class="setting-card">
       <h3>Data Storage</h3>
       <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">All data stored locally on device. Works fully offline — critical for the no-coverage zone (legs 19–32).</p>
-      <button class="btn-danger" onclick="confirmReset()">Reset All Race Data</button>
+      <button class="btn-danger" onclick="confirmReset()">Reset Race Progress</button>
     </div>
   `;
 }
 
 // --- ACTIONS ---
 function startRace() {
-  // NEW: Long Buzz Haptic!
-  if (navigator.vibrate) navigator.vibrate([200]); 
   engine.logStart(1);
   renderView('viewRace');
 }
 
 function logHandoffNow() {
-  // NEW: Double-Tap Buzz Haptic!
-  if (navigator.vibrate) navigator.vibrate([100, 50, 100]); 
   engine.logHandoff(engine.getCurrentLeg());
   renderView('viewRace');
 }
@@ -745,7 +758,6 @@ function logManualHandoff() {
   renderView('viewRace');
 }
 
-// --- NEW CORRECTION FUNCTIONS ---
 function undoLastHandoff() {
   if (!confirm('Are you sure you want to undo the last handoff?')) return;
   
@@ -811,16 +823,55 @@ function changeMyRunner(val) {
   window.spriteAnimator.mount();
 }
 
+// --- NEW PACE SETUP FUNCTIONS ---
+function applyBasePace(runnerId) {
+  const min = parseInt(document.getElementById('basePaceMin').value);
+  const sec = parseInt(document.getElementById('basePaceSec').value);
+  
+  if (isNaN(min) || isNaN(sec)) {
+    alert("Please enter a valid minutes and seconds pace.");
+    return;
+  }
+  
+  const myLegs = engine.getRunnerLegs(runnerId);
+  myLegs.forEach(l => {
+    engine.setPace(l.leg, min, sec);
+  });
+  
+  // Mark the prompt as completed
+  localStorage.setItem(`htc_paces_set_${runnerId}`, 'true');
+  renderMyLegsView();
+  renderHeader();
+}
+
 function updatePace(legNum, min, sec) {
   engine.setPace(legNum, parseInt(min) || 10, parseInt(sec) || 0);
+  
+  // If they manually edit an individual leg, mark the prompt as completed too
+  const myId = getMyRunnerId();
+  localStorage.setItem(`htc_paces_set_${myId}`, 'true');
+  
   renderMyLegsView();
   renderHeader();
   window.spriteAnimator.mount();
 }
 
+// --- SAFE RESET LOGIC ---
 function confirmReset() {
-  if (confirm('Reset ALL race data? This clears all logged handoff times and pace edits. Cannot be undone.')) {
+  if (confirm('Reset ALL logged handoff times? \n\n(Don\'t worry, your custom runner paces will NOT be deleted).')) {
+    
+    // Backup the custom paces sub-object before nuking the engine state
+    const savedPaces = engine.state.paces ? JSON.parse(JSON.stringify(engine.state.paces)) : {};
+    
+    // Nuke the race actuals
     engine.resetState();
+    
+    // Restore the paces directly back into the fresh state
+    if (Object.keys(savedPaces).length > 0) {
+      engine.state.paces = savedPaces;
+    }
+    
+    engine.saveState();
     renderView('viewRace');
   }
 }
