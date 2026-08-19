@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head><title>Generate PWA Icons</title></head>
+<body>
+<p>Right-click each canvas → "Save image as" → save as icon-192.png and icon-512.png</p>
+<canvas id="c192" width="192" height="192"></canvas>
+<canvas id="c512" width="512" height="512"></canvas>
+<script>
+function drawIcon(canvas) {
+  const ctx = canvas.getContext('2d');
+  const s = canvas.width;
+  // Background
+  ctx.fillStyle = '#0a0e17';
+  ctx.fillRect(0, 0, s, s);
+  // Gradient circle
+  const grad = ctx.createLinearGradient(s*0.2, s*0.2, s*0.8, s*0.8);
+  grad.addColorStop(0, '#3b9eff');
+  grad.addColorStop(1, '#a78bfa');
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.arc(s/2, s/2, s*0.38, 0, Math.PI*2);
+  ctx.fill();
+  // Text
+  ctx.fillStyle = '#ffffff';
+  ctx.font = `bold ${s*0.18}px Inter, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('HTC', s/2, s/2 - s*0.05);
+  ctx.font = `bold ${s*0.08}px Inter, sans-serif`;
+  ctx.fillStyle = '#c0d0e0';
+  ctx.fillText('2026', s/2, s/2 + s*0.12);
+}
+drawIcon(document.getElementById('c192'));
+drawIcon(document.getElementById('c512'));
+</script>
+</body>
+</html>

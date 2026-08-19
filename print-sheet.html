@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>HTC 2026 — Printable Timing Sheet</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Arial Narrow', Arial, sans-serif;
+      font-size: 11px;
+      padding: 12px;
+      color: #000;
+      background: #fff;
+    }
+    h1 {
+      font-size: 16px;
+      text-align: center;
+      margin-bottom: 2px;
+    }
+    .subtitle {
+      text-align: center;
+      font-size: 11px;
+      color: #555;
+      margin-bottom: 10px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 10px;
+    }
+    th, td {
+      border: 1px solid #999;
+      padding: 3px 5px;
+      text-align: center;
+      vertical-align: middle;
+    }
+    th {
+      background: #222;
+      color: #fff;
+      font-weight: 700;
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+    tr:nth-child(even) { background: #f4f4f4; }
+    .major-exchange { background: #fff3cd !important; font-weight: 700; }
+    .van-1 td:first-child { border-left: 3px solid #2196F3; }
+    .van-2 td:first-child { border-left: 3px solid #FF9800; }
+    .diff-E { color: #2e7d32; font-weight: 700; }
+    .diff-M { color: #e65100; font-weight: 700; }
+    .diff-H { color: #c62828; font-weight: 700; }
+    .diff-VH { color: #6a1b9a; font-weight: 700; }
+    .col-actual { background: #f0f0f0; }
+    .notes-cell { text-align: left; font-size: 9px; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .footer {
+      margin-top: 8px;
+      font-size: 9px;
+      color: #666;
+      display: flex;
+      justify-content: space-between;
+    }
+    .log-columns { min-width: 55px; }
+    @media print {
+      body { padding: 0; }
+      @page { margin: 0.3in; size: landscape; }
+    }
+  </style>
+</head>
+<body>
+  <h1>Hood to Coast 2026 — Timing Sheet</h1>
+  <div class="subtitle">Start: Fri Aug 28, 5:35 AM | AFT: 29:46:10 | Team: 12 runners, 2 vans | Print date: <span id="printDate"></span></div>
+
+  <table id="timingTable">
+    <thead>
+      <tr>
+        <th>Leg</th>
+        <th>Van</th>
+        <th>Runner</th>
+        <th>Dist</th>
+        <th>Diff</th>
+        <th>Pace</th>
+        <th>Est Time</th>
+        <th>Proj Start</th>
+        <th>Proj End</th>
+        <th>Elev</th>
+        <th class="log-columns">Actual Start</th>
+        <th class="log-columns">Actual End</th>
+        <th class="log-columns">+/-</th>
+        <th>Notes</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody"></tbody>
+  </table>
+
+  <div class="footer">
+    <div><strong>Major Van Exchanges:</strong> 6 (Sandy HS), 12 (OMSI), 18 (Columbia Co Fairgrounds), 24 (Mist/HWY 202), 30 (Astoria/HWY 202)</div>
+    <div><strong>No Cell:</strong> Legs 19–32 | <strong>Gravel:</strong> 20, 21, 35, 36 | <strong>Course closes:</strong> Sat 9PM</div>
+  </div>
+
+  <script src="data.js"></script>
+  <script src="engine.js"></script>
+  <script>
+    document.getElementById('printDate').textContent = new Date().toLocaleDateString();
+
+    const engine = new RaceEngine(RACE_CONFIG);
+    const tbody = document.getElementById('tableBody');
+
+    RACE_CONFIG.legs.forEach(leg => {
+      const runner = RACE_CONFIG.runners.find(r => r.id === leg.runnerId);
+      const pace = engine.state.paces[`leg_${leg.leg}`];
+      const estMs = engine.getEstimatedTimeMs(leg.leg);
+      const projStart = engine.getProjectedStartMs(leg.leg);
+      const projEnd = engine.getProjectedEndMs(leg.leg);
+      const isMajor = leg.majorExchange;
+
+      const paceStr = `${pace.min}:${pace.sec.toString().padStart(2,'0')}`;
+      const elevStr = `${leg.netElev > 0 ? '+' : ''}${leg.netElev}ft`;
+
+      // Compact notes
+      let notes = [];
+      if (leg.noCellCoverage) notes.push('No cell');
+      if (leg.gravel) notes.push('Gravel');
+      if (leg.noShade) notes.push('No shade');
+      if (leg.notes && leg.notes.includes('Water NOT')) notes.push('Pack water');
+      if (leg.notes && leg.notes.includes('NOT ALLOWED TO STOP')) notes.push('No van stops');
+      if (leg.notes && leg.notes.includes('Only Van 2')) notes.push('V2 only');
+      if (leg.notes && leg.notes.includes('Van 1 ONLY')) notes.push('V1 only');
+      if (isMajor) notes.push('★ MAJOR EXCH');
+
+      const row = document.createElement('tr');
+      row.className = `van-${leg.van} ${isMajor ? 'major-exchange' : ''}`;
+      row.innerHTML = `
+        <td><strong>${leg.leg}</strong></td>
+        <td>${leg.van}</td>
+        <td style="text-align:left;font-weight:500;">${runner.name.split(' ')[0]} ${runner.name.split(' ').slice(-1)[0][0]}.</td>
+        <td>${leg.distance}</td>
+        <td class="diff-${leg.difficulty}">${leg.difficulty}</td>
+        <td>${paceStr}</td>
+        <td>${RaceEngine.formatDuration(estMs)}</td>
+        <td><strong>${RaceEngine.formatTime(projStart)}</strong></td>
+        <td>${RaceEngine.formatTime(projEnd)}</td>
+        <td style="font-size:9px;">${elevStr}</td>
+        <td class="col-actual"></td>
+        <td class="col-actual"></td>
+        <td class="col-actual"></td>
+        <td class="notes-cell">${notes.join(', ')}</td>
+      `;
+      tbody.appendChild(row);
+    });
+  </script>
+</body>
+</html>
