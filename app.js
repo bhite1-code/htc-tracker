@@ -1,13 +1,10 @@
 // --- GLOBAL CRASH CATCHER ---
-// If the app freezes, this prints the exact error to the screen!
+// If the app freezes, this prints a blindingly obvious exact error to the screen!
 window.onerror = function(msg, url, lineNo, columnNo, error) {
-  document.body.innerHTML = `
-    <div style="padding: 30px; padding-top:100px; color: #ff5c5c; font-family: monospace; font-size: 14px; background: #0a0e17; min-height: 100vh;">
-      <h3 style="margin-bottom:10px;">⚠️ SYSTEM CRASH</h3>
-      <p><strong>Error:</strong> ${msg}</p>
-      <p><strong>Line:</strong> ${lineNo}</p>
-      <button onclick="localStorage.clear(); location.reload();" style="padding:12px; margin-top:20px; background:var(--red); color:white; border:none; font-weight:bold; border-radius:8px; width:100%;">HARD RESET APP</button>
-    </div>`;
+  const errDiv = document.createElement('div');
+  errDiv.style.cssText = 'position:fixed; inset:0; background:white; color:red; z-index:999999; padding:40px; font-size:20px; overflow-y:auto;';
+  errDiv.innerHTML = `<strong>CRASH DETECTED</strong><br><br>${msg}<br><br>Line: ${lineNo}<br><br><button onclick="localStorage.clear(); window.location.reload(true);" style="padding:20px; background:black; color:white; width:100%; font-size:18px; margin-top:20px; border-radius:10px;">HARD RESET APP</button>`;
+  document.body.appendChild(errDiv);
   return false;
 };
 
@@ -242,8 +239,8 @@ function renderRaceView() {
   const runnerFirstName = runner.name.split(' ')[0].toLowerCase();
   const prefillSrc = `assets/${runnerFirstName}/run/down/1.png`;
 
-  // FIXED GOOGLE MAPS NATIVE URL
-  const mapNavUrl = `https://www.google.com/maps/dir/?api=1&destination=${leg.gps.lat},${leg.gps.lng}`;
+  // FIXED GOOGLE MAPS URL
+  const mapNavUrl = `https://www.google.com/maps/search/?api=1&query=${leg.gps.lat},${leg.gps.lng}`;
 
   let html = `
     <div class="race-snake-container">
@@ -348,7 +345,7 @@ function renderDriverView() {
   const leg = summary.legData;
   const nextLeg = current < 36 ? engine.getLegSummary(current + 1) : null;
 
-  const mapNavUrl = `https://www.google.com/maps/dir/?api=1&destination=${leg.gps.lat},${leg.gps.lng}`;
+  const mapNavUrl = `https://www.google.com/maps/search/?api=1&query=${leg.gps.lat},${leg.gps.lng}`;
 
   let warnings = [];
   if (leg.notes.includes('NOT ALLOWED TO STOP')) warnings.push(leg.notes);
@@ -377,7 +374,7 @@ function renderDriverView() {
       <div class="driver-destination">
         <div class="driver-destination-label">Next Exchange</div>
         <div class="driver-destination-address">${nextLeg.legData.exchangeAddress}</div>
-        <a href="https://www.google.com/maps/dir/?api=1&destination=${nextLeg.legData.gps.lat},${nextLeg.legData.gps.lng}" target="_blank" class="btn-navigate" style="background:var(--surface-3);color:var(--text);box-shadow:none;">
+        <a href="https://www.google.com/maps/search/?api=1&query=${nextLeg.legData.gps.lat},${nextLeg.legData.gps.lng}" target="_blank" class="btn-navigate" style="background:var(--surface-3);color:var(--text);box-shadow:none;">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>
           Preview in Maps
         </a>
@@ -534,6 +531,7 @@ function renderMyLegsView() {
   document.getElementById('viewMyLegs').innerHTML = html;
 }
 
+
 function renderContextHero(context, runner, runnerId) {
   const { mode, nextLeg, legsUntil, minutesUntil } = context;
   const spriteState = mode === 'RUNNING' ? 'run' : 'idle';
@@ -618,3 +616,359 @@ function renderContextHero(context, runner, runnerId) {
             </div>
           </div>
         </div>`;
+    }
+
+    case 'RESTING': {
+      const summary = engine.getLegSummary(nextLeg.leg);
+      return `
+        <div class="card" style="border-color:var(--border); display:flex; align-items:center; gap: 16px; text-align:left;">
+          ${spriteBox}
+          <div style="flex:1;">
+            <div style="font-size:13px;font-weight:600;color:var(--text-dim);">Next up: Leg ${nextLeg.leg}</div>
+            <div class="active-runner-name" style="font-size:24px; color:var(--text-muted); margin:4px 0;">${formatTimeLeft(minutesUntil)}</div>
+            <div style="font-size:12px;color:var(--text-muted);">
+              Projected: ~${RaceEngine.formatTime(summary.projectedStart)}
+            </div>
+            <div style="font-size:11px;color:var(--text-dim);margin-top:8px;">
+              🛏️ Rest up. Eat. Hydrate. You've got time.
+            </div>
+          </div>
+        </div>`;
+    }
+
+    case 'FINISHED': {
+      const completedLegs = engine.getRunnerLegs(runnerId).filter(l => engine.isLegComplete(l.leg));
+      const totalActual = completedLegs.reduce((sum, l) => {
+        const s = engine.getLegSummary(l.leg);
+        return sum + (s.actualTime || 0);
+      }, 0);
+      return `
+        <div class="card card-glow-green" style="display:flex; align-items:center; gap: 16px; text-align:left;">
+          ${spriteBox}
+          <div style="flex:1;">
+            <div style="font-size:24px;margin-bottom:4px;">🎉</div>
+            <div class="active-runner-name" style="font-size:24px;">You're Done!</div>
+            <div style="font-size:13px;color:var(--text-muted);margin-top:4px;">
+              All 3 legs complete • Total running time: ${RaceEngine.formatDuration(totalActual)}
+            </div>
+          </div>
+        </div>`;
+    }
+
+    default:
+      return '';
+  }
+}
+
+// --- FULL RACE VIEW ---
+let fullRaceFilter = 'all';
+
+function renderFullRaceView() {
+  let html = `
+    <div class="race-filter-row">
+      <button class="filter-btn ${fullRaceFilter === 'all' ? 'active' : ''}" onclick="setFilter('all')">All</button>
+      <button class="filter-btn ${fullRaceFilter === '1' ? 'active' : ''}" onclick="setFilter('1')">Van 1</button>
+      <button class="filter-btn ${fullRaceFilter === '2' ? 'active' : ''}" onclick="setFilter('2')">Van 2</button>
+    </div>
+  `;
+
+  const summaries = engine.getAllLegSummaries();
+  summaries.forEach(s => {
+    if (fullRaceFilter !== 'all' && s.legData.van.toString() !== fullRaceFilter) return;
+
+    const statusClass = s.status === 'complete' ? 'complete' : s.status === 'active' ? 'active' : '';
+    const numClass = s.status === 'complete' ? 'complete' : s.status === 'active' ? 'active' : '';
+    const isMajor = s.legData.majorExchange ? 'major-exchange' : '';
+
+    html += `
+      <div class="race-leg-row ${statusClass} ${isMajor}">
+        <div class="leg-row-num ${numClass}">${s.leg}</div>
+        <div class="leg-row-info">
+          <div class="leg-row-name">${s.runner.name}</div>
+          <div class="leg-row-meta">
+            ${s.legData.distance}mi • 
+            <span class="diff-badge diff-${s.legData.difficulty}" style="padding:1px 5px;font-size:9px;">${s.legData.difficulty}</span>
+            ${s.legData.majorExchange ? ' • 🔄 Major Exchange' : ''}
+          </div>
+        </div>
+        <div class="leg-row-time">
+          <div class="leg-row-time-value">${RaceEngine.formatTime(s.projectedStart)}</div>
+          <div class="leg-row-time-label">${RaceEngine.formatDuration(s.estimatedTime)}</div>
+          ${s.delta !== null ? `
+            <span class="leg-row-delta ${s.delta > 0 ? 'delta-behind' : 'delta-ahead'}">
+              ${RaceEngine.formatDelta(s.delta)}
+            </span>` : ''}
+        </div>
+      </div>
+    `;
+  });
+
+  document.getElementById('viewFull').innerHTML = html;
+}
+
+function setFilter(f) {
+  fullRaceFilter = f;
+  renderFullRaceView();
+}
+
+// --- SETTINGS VIEW ---
+function renderSettingsView() {
+  
+  const completedLegs = [];
+  for (let i = 1; i <= 36; i++) {
+    if (engine.isLegComplete(i)) completedLegs.push(i);
+  }
+  const fixLegOptions = completedLegs.map(l => `<option value="${l}">Leg ${l}</option>`).join('');
+
+  document.getElementById('viewSettings').innerHTML = `
+    <div class="setting-card">
+      <h3>Race Info</h3>
+      <p style="font-size:14px;font-weight:600;">Hood to Coast 2026 — 44th Annual</p>
+      <p style="font-size:13px;color:var(--text-muted);margin-top:4px;">Start: Fri Aug 28, 2026 at 5:35 AM</p>
+      <p style="font-size:13px;color:var(--text-muted);">AFT: 29:46:10 (Anticipated Finish Time)</p>
+      <p style="font-size:13px;color:var(--text-muted);">Course: 199.07 miles • 36 legs • 12 runners</p>
+    </div>
+
+    <div class="setting-card">
+      <h3>Fix a Wrong Entry</h3>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">Accidentally clicked early or entered the wrong time? Fix it here.</p>
+      
+      <button class="btn-danger" style="margin-bottom:16px; border-color:var(--orange); color:var(--orange);" onclick="undoLastHandoff()">↩ Undo Last Handoff</button>
+
+      ${completedLegs.length > 0 ? `
+      <div style="border-top: 1px solid var(--border); padding-top: 12px;">
+        <label style="font-size:11px;color:var(--text-muted);">EDIT PAST TIME:</label>
+        <div style="display:flex; gap:8px; margin-top:6px;">
+          <select id="fixLegSelect" class="input-time" style="flex: 0.5; font-size:13px;">
+            ${fixLegOptions}
+          </select>
+          <input type="time" class="input-time" id="fixLegTime" step="60" style="flex: 1;">
+        </div>
+        <button class="btn-manual" style="width:100%; margin-top:8px; background: rgba(59, 158, 255, 0.1);" onclick="fixLoggedTime()">Update Time</button>
+      </div>
+      ` : ''}
+    </div>
+
+    <div class="setting-card">
+      <h3>Your Runner</h3>
+      <select class="runner-picker" onchange="setMyRunnerId(parseInt(this.value)); renderSettingsView();">
+        ${RACE_CONFIG.runners.map(r => `
+          <option value="${r.id}" ${r.id === getMyRunnerId() ? 'selected' : ''}>${r.name}</option>
+        `).join('')}
+      </select>
+      <p style="font-size:12px;color:var(--text-muted);">This sets which runner's legs you see in "My Legs" view.</p>
+    </div>
+    
+    <div class="setting-card">
+      <h3>Data Storage</h3>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">All data stored locally on device. Works fully offline — critical for the no-coverage zone (legs 19–32).</p>
+      <button class="btn-danger" onclick="confirmReset()">Reset Race Progress</button>
+    </div>
+  `;
+}
+
+// --- ACTIONS ---
+function startRace() {
+  if (navigator.vibrate) navigator.vibrate([200]); 
+  engine.logStart(1);
+  renderView('viewRace');
+}
+
+function logHandoffNow() {
+  if (navigator.vibrate) navigator.vibrate([100, 50, 100]); 
+  engine.logHandoff(engine.getCurrentLeg());
+  renderView('viewRace');
+}
+
+function logManualHandoff() {
+  const input = document.getElementById('manualTime');
+  if (!input || !input.value) return;
+  const [hours, minutes] = input.value.split(':').map(Number);
+  const raceStart = new Date(RACE_CONFIG.startTime);
+  let logTime = new Date(raceStart);
+  logTime.setHours(hours, minutes, 0, 0);
+  if (logTime.getTime() < engine.getRaceStartMs()) {
+    logTime.setDate(logTime.getDate() + 1);
+  }
+  const current = engine.getCurrentLeg();
+  if (!engine.state.raceStarted) {
+    engine.logStart(1, logTime.getTime());
+  } else {
+    engine.logHandoff(current, logTime.getTime());
+  }
+  input.value = '';
+  renderView('viewRace');
+}
+
+function undoLastHandoff() {
+  if (!confirm('Are you sure you want to undo the last handoff?')) return;
+  
+  const current = engine.getCurrentLeg();
+  
+  if (current === 36 && engine.isLegComplete(36)) {
+    delete engine.state.actuals['leg_36_end'];
+    engine.saveState();
+    switchView('viewRace');
+    return;
+  }
+  
+  if (current === 1 && !engine.state.raceStarted) return;
+  
+  if (current === 1 && engine.state.raceStarted) {
+    delete engine.state.actuals['leg_1_start'];
+    engine.state.raceStarted = false;
+    engine.saveState();
+    switchView('viewRace');
+    return;
+  }
+  
+  const legToUndo = current - 1;
+  delete engine.state.actuals[`leg_${legToUndo}_end`];
+  delete engine.state.actuals[`leg_${current}_start`];
+  engine.state.currentLeg = legToUndo;
+  engine.saveState();
+  
+  switchView('viewRace');
+}
+
+function fixLoggedTime() {
+  const legStr = document.getElementById('fixLegSelect').value;
+  const timeStr = document.getElementById('fixLegTime').value;
+  if (!legStr || !timeStr) {
+    alert("Please enter a valid time.");
+    return;
+  }
+
+  const legNum = parseInt(legStr);
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  const raceStart = new Date(RACE_CONFIG.startTime);
+  let logTime = new Date(raceStart);
+  logTime.setHours(hours, minutes, 0, 0);
+
+  if (logTime.getTime() < engine.getRaceStartMs() - 3600000) { 
+    logTime.setDate(logTime.getDate() + 1);
+  }
+
+  engine.state.actuals[`leg_${legNum}_end`] = logTime.getTime();
+  if (legNum < 36) {
+    engine.state.actuals[`leg_${legNum + 1}_start`] = logTime.getTime();
+  }
+  engine.saveState();
+
+  alert(`Leg ${legNum} time successfully updated!`);
+  renderView('viewSettings');
+}
+
+function changeMyRunner(val) {
+  setMyRunnerId(parseInt(val));
+  renderMyLegsView();
+  window.spriteAnimator.mount();
+}
+
+function applyBasePace(runnerId) {
+  const min = parseInt(document.getElementById('basePaceMin').value);
+  const sec = parseInt(document.getElementById('basePaceSec').value);
+  
+  if (isNaN(min) || isNaN(sec)) {
+    alert("Please enter a valid minutes and seconds pace.");
+    return;
+  }
+  
+  const myLegs = engine.getRunnerLegs(runnerId);
+  myLegs.forEach(l => {
+    engine.setPace(l.leg, min, sec);
+  });
+  
+  localStorage.setItem(`htc_paces_set_${runnerId}`, 'true');
+  renderMyLegsView();
+  renderHeader();
+}
+
+function updatePace(legNum, min, sec) {
+  engine.setPace(legNum, parseInt(min) || 10, parseInt(sec) || 0);
+  
+  const myId = getMyRunnerId();
+  localStorage.setItem(`htc_paces_set_${myId}`, 'true');
+  
+  renderMyLegsView();
+  renderHeader();
+  window.spriteAnimator.mount();
+}
+
+function confirmReset() {
+  if (confirm('Reset ALL logged handoff times? \n\n(Don\'t worry, your custom runner paces will NOT be deleted).')) {
+    
+    const savedPaces = engine.state.paces ? JSON.parse(JSON.stringify(engine.state.paces)) : {};
+    
+    engine.resetState();
+    
+    if (Object.keys(savedPaces).length > 0) {
+      engine.state.paces = savedPaces;
+    }
+    
+    engine.saveState();
+    renderView('viewRace');
+  }
+}
+
+// --- HELPERS ---
+function getNextMajorExchange(currentLeg) {
+  const majorLegs = [6, 12, 18, 24, 30];
+  for (const ml of majorLegs) {
+    if (ml >= currentLeg && !engine.isLegComplete(ml)) {
+      return engine.getLegSummary(ml);
+    }
+  }
+  return null;
+}
+
+function getGearRequirements(leg, summary) {
+  const gear = [];
+  const startTime = new Date(summary.projectedStart);
+  const endTime = new Date(summary.projectedEnd);
+  const startHour = startTime.getHours();
+  const endHour = endTime.getHours();
+
+  const needsVest = startHour >= 18 || startHour < 9 || endHour >= 18 || endHour < 9;
+  const needsLights = startHour >= 18 || startHour < 7 || endHour >= 18 || endHour < 7;
+
+  if (needsVest) gear.push({ label: '🦺 Reflective Vest', type: 'required' });
+  if (needsLights) gear.push({ label: '🔦 LED Flashers + Headlamp', type: 'required' });
+  if (leg.gravel) gear.push({ label: '😷 Bandana (dust)', type: 'warning' });
+  if (leg.noCellCoverage) gear.push({ label: '📵 No Cell Coverage', type: 'warning' });
+  if (leg.noShade) gear.push({ label: '☀️ No Shade', type: 'warning' });
+  if (leg.notes && leg.notes.includes('Water NOT')) gear.push({ label: '💧 Pack Water!', type: 'required' });
+
+  return gear;
+}
+
+function renderLegRow(s) {
+  return `
+    <div class="race-leg-row ${s.status} ${s.legData.majorExchange ? 'major-exchange' : ''}">
+      <div class="leg-row-num ${s.status}">${s.leg}</div>
+      <div class="leg-row-info">
+        <div class="leg-row-name">${s.runner.name}</div>
+        <div class="leg-row-meta">
+          ${s.legData.distance}mi •
+          <span class="diff-badge diff-${s.legData.difficulty}" style="padding:1px 5px;font-size:9px;">${s.legData.difficulty}</span>
+          <span class="van-badge van-badge-${s.legData.van}" style="margin-left:4px;">V${s.legData.van}</span>
+        </div>
+      </div>
+      <div class="leg-row-time">
+        <div class="leg-row-time-value">${RaceEngine.formatTime(s.projectedStart)}</div>
+        <div class="leg-row-time-label">${RaceEngine.formatDuration(s.estimatedTime)}</div>
+      </div>
+    </div>
+  `;
+}
+
+// --- INIT ---
+try {
+  renderView('viewRace');
+} catch (e) {
+  console.error("Critical Render Failure:", e);
+  const errDiv = document.createElement('div');
+  errDiv.style.cssText = 'position:fixed; inset:0; background:white; color:red; z-index:999999; padding:40px; font-size:20px; overflow-y:auto;';
+  errDiv.innerHTML = `<strong>RENDER FAILED</strong><br><br>${e.message}<br><br><button onclick="localStorage.clear(); window.location.reload(true);" style="padding:20px; background:black; color:white; width:100%; font-size:18px;">HARD RESET APP</button>`;
+  document.body.appendChild(errDiv);
+}
