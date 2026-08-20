@@ -1,3 +1,16 @@
+// --- GLOBAL CRASH CATCHER ---
+// If the app freezes, this prints the exact error to the screen!
+window.onerror = function(msg, url, lineNo, columnNo, error) {
+  document.body.innerHTML = `
+    <div style="padding: 30px; padding-top:100px; color: #ff5c5c; font-family: monospace; font-size: 14px; background: #0a0e17; min-height: 100vh;">
+      <h3 style="margin-bottom:10px;">⚠️ SYSTEM CRASH</h3>
+      <p><strong>Error:</strong> ${msg}</p>
+      <p><strong>Line:</strong> ${lineNo}</p>
+      <button onclick="localStorage.clear(); location.reload();" style="padding:12px; margin-top:20px; background:var(--red); color:white; border:none; font-weight:bold; border-radius:8px; width:100%;">HARD RESET APP</button>
+    </div>`;
+  return false;
+};
+
 // HTC 2026 Race Tracker - App UI
 const engine = new RaceEngine(RACE_CONFIG);
 
@@ -82,7 +95,7 @@ class SpriteAnimator {
       const col = this.vanFrame % 3;
       const row = Math.floor(this.vanFrame / 3);
       this.vanSprites.forEach(van => {
-         van.style.backgroundPosition = `${col * 50}\%${row * 50}%`;
+         van.style.backgroundPosition = `${col * 50}% ${row * 50}%`;
       });
     }
   }
@@ -172,7 +185,7 @@ function generateRaceSnakeSVG(currentLeg) {
     return { x, y };
   });
 
-  let svg = `<svg viewBox="0 0 ${w}${h}" style="width:100%; height:auto; display:block; overflow:visible;">`;
+  let svg = `<svg viewBox="0 0 ${w} ${h}" style="width:100%; height:auto; display:block; overflow:visible;">`;
 
   const pathData = points.map((pt, i) => `${i === 0 ? 'M' : 'L'} ${pt.x},${pt.y}`).join(' ');
   svg += `<path d="${pathData}" fill="none" stroke="var(--surface-3)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />`;
@@ -208,7 +221,6 @@ function generateRaceSnakeSVG(currentLeg) {
       stroke = '#fff';
       strokeW = 2;
       
-      // Removed the Van sprite from here to keep the map clean and data-viz focused!
       pulse = `<circle cx="${pt.x}" cy="${pt.y}" r="6" fill="var(--accent)" class="snake-pulse" opacity="0.6"/>`;
     }
 
@@ -230,6 +242,9 @@ function renderRaceView() {
   const runnerFirstName = runner.name.split(' ')[0].toLowerCase();
   const prefillSrc = `assets/${runnerFirstName}/run/down/1.png`;
 
+  // FIXED GOOGLE MAPS NATIVE URL
+  const mapNavUrl = `https://www.google.com/maps/dir/?api=1&destination=${leg.gps.lat},${leg.gps.lng}`;
+
   let html = `
     <div class="race-snake-container">
       <div class="snake-title">Course Progress (Mt. Hood → Seaside)</div>
@@ -246,7 +261,8 @@ function renderRaceView() {
           <div class="active-runner-name">${runner.name}</div>
           <div class="active-runner-subtitle" style="margin-bottom:0;">
             <span class="diff-badge diff-${leg.difficulty}">${RaceEngine.difficultyLabel(leg.difficulty)}</span>
-            <span class="van-badge van-badge-${leg.van}">Van ${leg.van}</span>${leg.noCellCoverage ? '<span class="gear-badge required" style="margin-left:4px;">📵 No Cell</span>' : ''}
+            <span class="van-badge van-badge-${leg.van}">Van ${leg.van}</span>
+            ${leg.noCellCoverage ? '<span class="gear-badge required" style="margin-left:4px;">📵 No Cell</span>' : ''}
           </div>
         </div>
         <div style="text-align:right;">
@@ -287,8 +303,7 @@ function renderRaceView() {
     </div>
 
     <div style="margin-top:20px; margin-bottom: 12px;">
-      <a href="https://maps.google.com/?q=$${leg.gps.lat},${leg.gps.lng}"
-         target="_blank"
+      <a href="${mapNavUrl}" target="_blank"
          style="display:flex;align-items:center;gap:12px;padding:16px;border-radius:var(--radius-sm);background:var(--surface-2);border:1px solid var(--border);text-decoration:none;color:var(--text);box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
         <div style="width: 32px; height: 32px; flex-shrink:0;">
             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -333,7 +348,7 @@ function renderDriverView() {
   const leg = summary.legData;
   const nextLeg = current < 36 ? engine.getLegSummary(current + 1) : null;
 
-  const gpsUrl = `https://maps.google.com/?q=$${leg.gps.lat},${leg.gps.lng}`;
+  const mapNavUrl = `https://www.google.com/maps/dir/?api=1&destination=${leg.gps.lat},${leg.gps.lng}`;
 
   let warnings = [];
   if (leg.notes.includes('NOT ALLOWED TO STOP')) warnings.push(leg.notes);
@@ -347,7 +362,7 @@ function renderDriverView() {
         <div class="driver-van-sprite"></div>
         <div class="driver-destination-label">Driving to Exchange ${current}</div>
         <div class="driver-destination-address">${leg.exchangeAddress}</div>
-        <a href="${gpsUrl}" target="_blank" class="btn-navigate">
+        <a href="${mapNavUrl}" target="_blank" class="btn-navigate">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>
           Open in Maps
         </a>
@@ -362,7 +377,7 @@ function renderDriverView() {
       <div class="driver-destination">
         <div class="driver-destination-label">Next Exchange</div>
         <div class="driver-destination-address">${nextLeg.legData.exchangeAddress}</div>
-        <a href="https://maps.google.com/?q=$${nextLeg.legData.gps.lat},${nextLeg.legData.gps.lng}" target="_blank" class="btn-navigate" style="background:var(--surface-3);color:var(--text);box-shadow:none;">
+        <a href="https://www.google.com/maps/dir/?api=1&destination=${nextLeg.legData.gps.lat},${nextLeg.legData.gps.lng}" target="_blank" class="btn-navigate" style="background:var(--surface-3);color:var(--text);box-shadow:none;">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>
           Preview in Maps
         </a>
@@ -398,7 +413,7 @@ function formatTimeLeft(totalMins) {
   if (totalMins < 60) return `${totalMins} min`;
   const h = Math.floor(totalMins / 60);
   const m = totalMins % 60;
-  return `${h}h${m}m`;
+  return `${h}h ${m}m`;
 }
 
 function renderMyLegsView() {
@@ -453,6 +468,153 @@ function renderMyLegsView() {
         <div class="leg-detail-header">
           <div>
             <div class="leg-number">
-              ${isComplete ? '✓ ' : isNext ? '▶ ' : ''}LEG ${leg.leg}${isNext ? '<span style="font-size:10px;color:var(--accent);margin-left:6px;">NEXT UP</span>' : ''}
+              ${isComplete ? '✓ ' : isNext ? '▶ ' : ''}LEG ${leg.leg}
+              ${isNext ? '<span style="font-size:10px;color:var(--accent);margin-left:6px;">NEXT UP</span>' : ''}
             </div>
-            <div class="leg-runner" style="font-family
+            <div class="leg-runner" style="font-family:Outfit, sans-serif; font-size:20px; font-weight:800; letter-spacing:-0.5px; margin-bottom:2px;">
+              <span class="diff-badge diff-${leg.difficulty}" style="font-family:Inter, sans-serif;">${RaceEngine.difficultyLabel(leg.difficulty)}</span>
+              ${leg.noCellCoverage ? '<span class="gear-badge warning" style="font-family:Inter, sans-serif;">📵 No Cell</span>' : ''}
+              ${leg.gravel ? '<span class="gear-badge warning" style="font-family:Inter, sans-serif;">🪨 Gravel</span>' : ''}
+            </div>
+          </div>
+          <span class="van-badge van-badge-${leg.van}">Van ${leg.van}</span>
+        </div>
+
+        <div class="leg-meta-grid">
+          <div class="leg-meta-item">
+            <div class="leg-meta-value">${leg.distance} mi</div>
+            <div class="leg-meta-label">Distance</div>
+          </div>
+          <div class="leg-meta-item">
+            <div class="leg-meta-value">${isComplete ? RaceEngine.formatTime(engine.getActualStartMs(leg.leg)) : RaceEngine.formatTime(summary.projectedStart)}</div>
+            <div class="leg-meta-label">${isComplete ? 'Started' : 'Proj. Start'}</div>
+          </div>
+          <div class="leg-meta-item">
+            <div class="elev-viz">
+              <span class="elev-arrow-up">↑${leg.elevGain}ft</span>
+              <span class="elev-arrow-down">↓${Math.abs(leg.elevLoss)}ft</span>
+            </div>
+            <div class="leg-meta-label">Elevation</div>
+          </div>
+          <div class="leg-meta-item">
+            <div class="leg-meta-value">${isComplete && summary.actualTime ? RaceEngine.formatDuration(summary.actualTime) : RaceEngine.formatDuration(summary.estimatedTime)}</div>
+            <div class="leg-meta-label">${isComplete ? 'Actual Time' : 'Est. Time'}</div>
+          </div>
+        </div>
+
+        ${isComplete && summary.delta !== null ? `
+          <div style="text-align:center;margin:10px 0;font-size:14px;font-weight:700;" class="${summary.delta > 0 ? 'delta-behind' : 'delta-ahead'}">
+            ${summary.delta <= 0 ? '🔥' : '⏱️'} ${RaceEngine.formatDelta(summary.delta)} vs projected
+          </div>
+        ` : ''}
+
+        <div class="leg-description">${leg.description}</div>
+        ${leg.notes ? `<div class="leg-notes">📋 ${leg.notes}</div>` : ''}
+
+        ${gearNeeded.length > 0 ? `
+        <div class="gear-badges">
+          ${gearNeeded.map(g => `<span class="gear-badge ${g.type}">${g.label}</span>`).join('')}
+        </div>` : ''}
+
+        ${!isComplete ? `
+        <div class="pace-edit-row">
+          <span class="pace-label">Pace:</span>
+          <input class="pace-input" type="number" min="4" max="20" value="${pace.min}"
+            onchange="updatePace(${leg.leg}, this.value, this.nextElementSibling.nextElementSibling.value)">
+          <span class="pace-sep">:</span>
+          <input class="pace-input" type="number" min="0" max="59" value="${pace.sec}"
+            onchange="updatePace(${leg.leg}, this.previousElementSibling.previousElementSibling.value, this.value)">
+          <span class="pace-label">/mi</span>
+          <span class="pace-est">= ${RaceEngine.formatDuration(summary.estimatedTime)}</span>
+        </div>` : ''}
+      </div>
+    `;
+  });
+
+  document.getElementById('viewMyLegs').innerHTML = html;
+}
+
+function renderContextHero(context, runner, runnerId) {
+  const { mode, nextLeg, legsUntil, minutesUntil } = context;
+  const spriteState = mode === 'RUNNING' ? 'run' : 'idle';
+  const runnerFirstName = runner.name.split(' ')[0].toLowerCase();
+  
+  const prefillSrc = `assets/${runnerFirstName}/${spriteState}/down/1.png`;
+
+  const spriteBox = `
+    <div style="width: 100px; height: 100px; border-radius: var(--radius-sm); background: rgba(0,0,0,0.2); border: 1px solid var(--border); display: flex; justify-content: center; align-items: center; flex-shrink: 0; overflow:hidden;">
+      <img class="runner-sprite-el" data-runner="${runner.name}" data-state="${spriteState}" src="${prefillSrc}" onerror="this.style.opacity='0'" style="width: 70px; height: 70px; image-rendering: pixelated; object-fit: contain; transform: scale(1.4); transform-origin: center; transition: opacity 0.2s;">
+    </div>
+  `;
+
+  switch(mode) {
+    case 'PRE_RACE': {
+      const firstLeg = engine.getRunnerLegs(runnerId)[0];
+      const firstSummary = engine.getLegSummary(firstLeg.leg);
+      return `
+        <div class="card card-glow-blue" style="display:flex; align-items:center; gap: 16px; text-align:left;">
+          ${spriteBox}
+          <div style="flex:1;">
+            <div style="font-size:13px;color:var(--text-muted);margin-bottom:4px;">Race starts soon</div>
+            <div class="active-runner-name" style="font-size:24px;">Hey ${runner.name.split(' ')[0]} 👋</div>
+            <div style="font-size:13px;color:var(--text-muted);margin-top:8px;">
+              Your first leg: <strong>Leg ${firstLeg.leg}</strong> • ${firstLeg.distance} mi • ${RaceEngine.difficultyLabel(firstLeg.difficulty)}
+            </div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">
+              Projected start: ${RaceEngine.formatTime(firstSummary.projectedStart)}
+            </div>
+          </div>
+        </div>`;
+    }
+
+    case 'RUNNING': {
+      const elapsed = Date.now() - engine.getActualStartMs(nextLeg.leg);
+      return `
+        <div class="card card-glow-green" style="display:flex; align-items:center; gap: 16px; text-align:left;">
+          ${spriteBox}
+          <div style="flex:1;">
+            <div style="font-size:13px;color:var(--green);font-weight:700;text-transform:uppercase;letter-spacing:1px;">You're Running</div>
+            <div class="active-runner-name" style="font-size:28px; color:var(--text); margin:4px 0;">Leg ${nextLeg.leg}</div>
+            <div style="font-size:14px;color:var(--text-muted);">${nextLeg.distance} mi • ${RaceEngine.difficultyLabel(nextLeg.difficulty)}</div>
+            <div style="margin-top:8px;font-size:13px;color:var(--text-muted);">
+              ⏱️ Elapsed: <strong style="color:var(--text);">${RaceEngine.formatDuration(elapsed)}</strong>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    case 'NEXT_UP': {
+      const summary = engine.getLegSummary(nextLeg.leg);
+      const pulseClass = minutesUntil <= 15 ? 'imminent' : '';
+      return `
+        <div class="card card-glow-orange ${pulseClass}" style="display:flex; align-items:center; gap: 16px; text-align:left;">
+          ${spriteBox}
+          <div style="flex:1;">
+            <div style="font-size:13px;color:var(--orange);font-weight:700;text-transform:uppercase;letter-spacing:1px;">You're Next</div>
+            <div class="active-runner-name" style="font-size:24px; margin:4px 0;">Leg ${nextLeg.leg}</div>
+            <div style="font-size:13px;color:var(--text-muted);">
+              ${minutesUntil > 0 ? `~${formatTimeLeft(minutesUntil)} until handoff` : 'Handoff imminent!'}
+            </div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:6px;">
+              ${nextLeg.distance} mi • ${RaceEngine.difficultyLabel(nextLeg.difficulty)}
+            </div>
+          </div>
+        </div>`;
+    }
+
+    case 'ON_DECK': {
+      const summary = engine.getLegSummary(nextLeg.leg);
+      return `
+        <div class="card card-glow-blue" style="display:flex; align-items:center; gap: 16px; text-align:left;">
+          ${spriteBox}
+          <div style="flex:1;">
+            <div style="font-size:13px;color:var(--accent);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">On Deck</div>
+            <div class="active-runner-name" style="font-size:24px; margin:4px 0;">Leg ${nextLeg.leg}</div>
+            <div style="font-size:12px;color:var(--text-muted);">
+              ${legsUntil} leg${legsUntil > 1 ? 's' : ''} before yours. (~${formatTimeLeft(minutesUntil)})
+            </div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:6px;">
+              Proj. Start: ${RaceEngine.formatTime(summary.projectedStart)}
+            </div>
+          </div>
+        </div>`;
