@@ -7,6 +7,65 @@ window.onerror = function(msg, url, lineNo, columnNo, error) {
   return false;
 };
 
+// --- CINEMATIC INTRO CONTROLLER ---
+const PROGRESS_DURATION_MS = 10500; // Progress bar reaches 100% and button appears at 10.5s
+const AUTO_FINISH_MS = 17000;       // Full video playthrough duration
+let introInterval = null;
+let autoFinishTimeout = null;
+
+function runIntroSequence() {
+  const introScreen = document.getElementById('introScreen');
+  const fill = document.getElementById('introProgressFill');
+  const status = document.getElementById('introStatusText');
+  const launchBtn = document.getElementById('btnIntroLaunch');
+  if (!introScreen || !fill || !status) return;
+
+  if (launchBtn) launchBtn.classList.remove('visible');
+
+  const messages = [
+    { pct: 18, text: "MOUNTING RETRO TELEMETRY..." },
+    { pct: 36, text: "CALIBRATING MT. HOOD ELEVATIONS..." },
+    { pct: 56, text: "INITIALIZING VAN RADIO SYNC..." },
+    { pct: 76, text: "LOCKING SATELLITE FIXES..." },
+    { pct: 95, text: "READY FOR RACE DAY. GO DEUCES WILD!" },
+    { pct: 100, text: "SYSTEM READY. READY TO LAUNCH." }
+  ];
+
+  const startTime = Date.now();
+  let buttonRevealed = false;
+
+  introInterval = setInterval(() => {
+    const elapsed = Date.now() - startTime;
+    const progress = Math.min(100, (elapsed / PROGRESS_DURATION_MS) * 100);
+    fill.style.width = `${progress}%`;
+
+    const currentMsg = messages.find(m => progress <= m.pct) || messages[messages.length - 1];
+    status.textContent = currentMsg.text;
+
+    if (progress >= 100 && !buttonRevealed) {
+      buttonRevealed = true;
+      if (launchBtn) launchBtn.classList.add('visible');
+      clearInterval(introInterval);
+    }
+  }, 50);
+
+  // Auto-finish after the full 17s video loop completes
+  autoFinishTimeout = setTimeout(() => {
+    finishIntro();
+  }, AUTO_FINISH_MS);
+}
+
+function finishIntro() {
+  if (introInterval) clearInterval(introInterval);
+  if (autoFinishTimeout) clearTimeout(autoFinishTimeout);
+  const introScreen = document.getElementById('introScreen');
+  if (introScreen) {
+    introScreen.classList.add('hidden');
+    const video = introScreen.querySelector('video');
+    if (video) video.pause();
+  }
+}
+
 // HTC 2026 Race Tracker - App UI
 const engine = new RaceEngine(RACE_CONFIG);
 
@@ -372,7 +431,7 @@ function renderDriverView() {
         <div class="driver-destination-label">Next Exchange</div>
         <div class="driver-destination-address">${nextLeg.legData.exchangeAddress}</div>
         <a href="https://www.google.com/maps/search/?api=1&query=${nextLeg.legData.gps.lat},${nextLeg.legData.gps.lng}" target="_blank" class="btn-navigate" style="background:var(--surface-3);color:var(--text);box-shadow:none;">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>
           Preview in Maps
         </a>
       </div>
@@ -717,7 +776,6 @@ function renderSettingsView() {
   const fixLegOptions = completedLegs.map(l => `<option value="${l}">Leg ${l}</option>`).join('');
 
   document.getElementById('viewSettings').innerHTML = `
-    
     <div class="setting-card" style="border-color: var(--accent); background: linear-gradient(135deg, rgba(59, 158, 255, 0.05), var(--surface));">
       <h3 style="color:var(--accent);">📻 Off-Grid Radio Sync</h3>
       <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">Share your van's recent completed legs, or import a bulk code received from the other van via Meshtastic.</p>
@@ -728,6 +786,12 @@ function renderSettingsView() {
       <button class="btn-manual" style="width:100%; background:var(--surface-3); border-color:var(--accent); color:var(--text);" onclick="importBulkSync()">
         📥 Paste Inbound Sync
       </button>
+    </div>
+
+    <div class="setting-card">
+      <h3>Replay Intro</h3>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">Show the cinematic boot sequence again.</p>
+      <button class="btn-manual" style="width:100%;" onclick="document.getElementById('introScreen').classList.remove('hidden'); const v = document.querySelector('#introScreen video'); if(v){ v.currentTime=0; v.play(); } runIntroSequence();">🎬 Replay Intro Screen</button>
     </div>
 
     <div class="setting-card">
@@ -795,7 +859,6 @@ function exportBulkSync() {
   
   let syncData = [];
   
-  // Scrape the engine for every single completed leg so far
   for (let i = 1; i <= 36; i++) {
     if (engine.state.actuals[`leg_${i}_end`]) {
       let d = new Date(engine.state.actuals[`leg_${i}_end`]);
@@ -807,7 +870,6 @@ function exportBulkSync() {
   
   if (syncData.length === 0) return showToast("No completed legs to sync yet!");
   
-  // Extract only the last 6 completed legs to keep the Meshtastic text message tiny
   let payloadArr = syncData.slice(-6);
   let payloadStr = `HTC|SYNC|${payloadArr.join(',')}`;
   
@@ -822,7 +884,6 @@ async function importBulkSync() {
   try {
     const text = await navigator.clipboard.readText();
     
-    // Strict validation to ensure it's our exact app code
     if (!text || !text.startsWith("HTC|SYNC|")) {
       return alert("No valid Bulk Sync code found on clipboard.\nMake sure it starts with HTC|SYNC|");
     }
@@ -847,7 +908,6 @@ async function importBulkSync() {
           logTime.setDate(logTime.getDate() + 1);
         }
         
-        // Inject the math into the engine and bypass UI logging
         engine.state.actuals[`leg_${leg}_end`] = logTime.getTime();
         if (leg < 36) {
           engine.state.actuals[`leg_${leg + 1}_start`] = logTime.getTime();
@@ -1066,8 +1126,8 @@ function renderLegRow(s) {
 // --- INIT ---
 try {
   renderView('viewRace');
+  runIntroSequence();
   
-  // Custom CSS animation for Toast
   const style = document.createElement('style');
   style.innerHTML = `@keyframes toastIn { from { top: -20px; opacity: 0; } to { top: 80px; opacity: 1; } }`;
   document.head.appendChild(style);
