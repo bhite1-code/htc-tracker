@@ -16,27 +16,22 @@
   
   <style>
     :root {
-      /* Base Colors (Night Mode by Default) */
       --bg-night: #0a0e17;
       --surface-night: #131924;
       --surface-2-night: #1a2332;
       
-      /* Synthwave Dawn */
       --bg-dawn: #1a0b2e;
       --surface-dawn: #261242;
       --surface-2-dawn: #341a59;
 
-      /* Retro Arcade Day */
       --bg-day: #061c30;
       --surface-day: #0e2945;
       --surface-2-day: #16385b;
 
-      /* Active Environment Variables */
       --bg: var(--bg-night);
       --surface: var(--surface-night);
       --surface-2: var(--surface-2-night);
       
-      /* Universal Colors */
       --surface-3: #222f40;
       --border: rgba(255, 255, 255, 0.1);
       --text: #f0f4f8;
@@ -61,7 +56,6 @@
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
-    /* --- GLOBAL BACKGROUND & CRT SCANLINES --- */
     body {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       background-color: var(--bg);
@@ -76,7 +70,6 @@
       transition: background-color 1.5s ease;
     }
 
-    /* Day/Night Data Attribute Selectors */
     body[data-time="dawn"] {
       --bg: var(--bg-dawn);
       --surface: var(--surface-dawn);
@@ -88,240 +81,83 @@
       --surface-2: var(--surface-2-day);
     }
 
-    /* --- CRT TEXTURE SANDWICH LAYERING --- */
-    .header, .nav, .card, .race-snake-container, .race-leg-row, .setting-card {
-      position: relative;
-    }
+    .header, .nav, .card, .race-snake-container, .race-leg-row, .setting-card { position: relative; }
     .header::after, .nav::after, .card::after, .race-snake-container::after, .race-leg-row::after, .setting-card::after {
-      content: " ";
-      position: absolute;
-      inset: 0;
+      content: " "; position: absolute; inset: 0;
       background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
-      background-size: 100% 4px, 6px 100%;
-      border-radius: inherit;
-      pointer-events: none;
-      z-index: 0;
+      background-size: 100% 4px, 6px 100%; border-radius: inherit; pointer-events: none; z-index: 0;
     }
-    .header > *, .nav > *, .card > *, .race-snake-container > *, .race-leg-row > *, .setting-card > * {
-      position: relative;
-      z-index: 1;
-    }
+    .header > *, .nav > *, .card > *, .race-snake-container > *, .race-leg-row > *, .setting-card > * { position: relative; z-index: 1; }
 
-    /* --- HEADER --- */
-    .header {
-      background: linear-gradient(180deg, var(--surface) 0%, var(--bg) 100%);
-      padding: 20px 20px 16px;
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      backdrop-filter: blur(12px);
-      transition: background 1.5s ease;
-    }
-    .header-brand {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 12px;
-    }
-    .header-logo {
-      width: 40px;
-      height: 40px;
-      background: linear-gradient(135deg, var(--accent), var(--purple));
-      border-radius: 10px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-family: 'Outfit', sans-serif;
-      font-size: 18px;
-      letter-spacing: -0.5px;
-      font-weight: 900;
-      color: white;
-    }
-    .header h1 {
-      font-family: 'Outfit', sans-serif;
-      font-size: 22px;
-      letter-spacing: -0.5px;
-      font-weight: 800;
-      background: linear-gradient(135deg, var(--text), var(--accent));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      line-height: 1.1;
-    }
-    .header-sub {
-      font-size: 11px;
-      color: var(--text-muted);
-      font-weight: 500;
-    }
-    .race-progress-bar {
-      background: var(--surface-2);
-      border-radius: 20px;
-      height: 6px;
-      overflow: hidden;
-      margin-bottom: 10px;
-      transition: background-color 1.5s ease;
-    }
-    .race-progress-fill {
-      height: 100%;
-      background: linear-gradient(90deg, var(--accent), var(--green));
-      border-radius: 20px;
-      transition: width 0.5s ease;
-    }
-    .header-stats {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
+    .header { background: linear-gradient(180deg, var(--surface) 0%, var(--bg) 100%); padding: 20px 20px 16px; position: sticky; top: 0; z-index: 100; backdrop-filter: blur(12px); transition: background 1.5s ease; }
+    .header-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .header-logo { width: 40px; height: 40px; background: linear-gradient(135deg, var(--accent), var(--purple)); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-family: 'Outfit', sans-serif; font-size: 18px; letter-spacing: -0.5px; font-weight: 900; color: white; }
+    .header h1 { font-family: 'Outfit', sans-serif; font-size: 22px; letter-spacing: -0.5px; font-weight: 800; background: linear-gradient(135deg, var(--text), var(--accent)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; line-height: 1.1; }
+    .header-sub { font-size: 11px; color: var(--text-muted); font-weight: 500; }
+    .race-progress-bar { background: var(--surface-2); border-radius: 20px; height: 6px; overflow: hidden; margin-bottom: 10px; transition: background-color 1.5s ease; }
+    .race-progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--green)); border-radius: 20px; transition: width 0.5s ease; }
+    .header-stats { display: flex; justify-content: space-between; align-items: center; }
     .header-stat { text-align: center; }
     .header-stat-value { font-size: 14px; font-weight: 700; }
     .header-stat-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
 
-    /* --- BOTTOM NAV --- */
-    .nav {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      background: var(--surface);
-      border-top: 1px solid var(--border);
-      display: flex;
-      z-index: 100;
-      padding: 6px 8px;
-      padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px));
-      backdrop-filter: blur(16px);
-      transition: background-color 1.5s ease;
-    }
-    .nav-btn {
-      flex: 1;
-      padding: 8px 0 6px;
-      text-align: center;
-      background: none;
-      border: none;
-      color: var(--text-dim);
-      font-size: 9px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s;
-      border-radius: 12px;
-      letter-spacing: 0.3px;
-    }
+    .nav { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-top: 1px solid var(--border); display: flex; z-index: 100; padding: 6px 8px; padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px)); backdrop-filter: blur(16px); transition: background-color 1.5s ease; }
+    .nav-btn { flex: 1; padding: 8px 0 6px; text-align: center; background: none; border: none; color: var(--text-dim); font-size: 9px; font-weight: 600; cursor: pointer; transition: all 0.2s; border-radius: 12px; letter-spacing: 0.3px; }
     .nav-btn.active { color: var(--accent); background: var(--accent-glow); }
     .nav-btn svg { width: 20px; height: 20px; display: block; margin: 0 auto 3px; }
 
-    /* --- VIEWS --- */
     .view { display: none; padding: 0 20px 20px; }
     .view.active { display: block; animation: fadeIn 0.2s ease; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
-    /* --- CARDS --- */
-    .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 20px;
-      margin-bottom: 14px;
-      box-shadow: var(--shadow);
-      transition: transform 0.15s, background-color 1.5s ease, border-color 0.2s;
-    }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 14px; box-shadow: var(--shadow); transition: transform 0.15s, background-color 1.5s ease, border-color 0.2s; }
     .card:active { transform: scale(0.98); }
     .card-glow-blue { border-color: rgba(59, 158, 255, 0.3); background: linear-gradient(135deg, rgba(59, 158, 255, 0.05), var(--surface)); }
     .card-glow-green { border-color: rgba(0, 214, 143, 0.3); background: linear-gradient(135deg, rgba(0, 214, 143, 0.05), var(--surface)); }
     .card-glow-orange { border-color: rgba(255, 170, 43, 0.3); background: linear-gradient(135deg, rgba(255, 170, 43, 0.05), var(--surface)); }
 
-    /* --- IMMINENT WARNING PULSE --- */
     .card-glow-orange.imminent { animation: pulseWarning 1.5s infinite; }
-    @keyframes pulseWarning {
-      0% { box-shadow: 0 0 0 0 rgba(255, 170, 43, 0.4); }
-      70% { box-shadow: 0 0 0 12px rgba(255, 170, 43, 0); }
-      100% { box-shadow: 0 0 0 0 rgba(255, 170, 43, 0); }
-    }
+    @keyframes pulseWarning { 0% { box-shadow: 0 0 0 0 rgba(255, 170, 43, 0.4); } 70% { box-shadow: 0 0 0 12px rgba(255, 170, 43, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 170, 43, 0); } }
 
-    /* --- ACTIVE RUNNER CARD & PREMIUM TYPOGRAPHY --- */
     .active-runner-card { position: relative; overflow: hidden; }
-    .active-runner-card::before {
-      content: ''; position: absolute; top: -50%; right: -30%; width: 200px; height: 200px;
-      background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%); pointer-events: none;
-    }
-    .active-runner-name {
-      font-family: 'Outfit', sans-serif;
-      font-size: 28px;
-      letter-spacing: -0.5px;
-      font-weight: 800;
-      margin-bottom: 2px;
-      line-height: 1.1;
-    }
+    .active-runner-card::before { content: ''; position: absolute; top: -50%; right: -30%; width: 200px; height: 200px; background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%); pointer-events: none; }
+    .active-runner-name { font-family: 'Outfit', sans-serif; font-size: 28px; letter-spacing: -0.5px; font-weight: 800; margin-bottom: 2px; line-height: 1.1; }
     .active-runner-subtitle { font-size: 13px; color: var(--text-muted); margin-bottom: 16px; }
     .live-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
-    .live-stat {
-      background: var(--surface-2);
-      border-radius: var(--radius-sm);
-      padding: 12px 10px;
-      text-align: center;
-      transition: background-color 1.5s ease;
-    }
+    .live-stat { background: var(--surface-2); border-radius: var(--radius-sm); padding: 12px 10px; text-align: center; transition: background-color 1.5s ease; }
     .live-stat-value { font-size: 18px; font-weight: 800; line-height: 1.2; }
     .live-stat-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.3px; margin-top: 3px; }
 
-    /* --- DIFFICULTY BADGES --- */
     .diff-badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 20px; font-size: 11px; font-weight: 700; }
     .diff-E { background: rgba(0,214,143,0.15); color: var(--green); }
     .diff-M { background: rgba(255,170,43,0.15); color: var(--orange); }
     .diff-H { background: rgba(255,92,92,0.15); color: var(--red); }
     .diff-VH { background: rgba(167,139,250,0.15); color: var(--purple); }
 
-    /* --- HANDOFF BUTTONS --- */
     .handoff-container { margin-top: 16px; }
-    .btn-handoff {
-      width: 100%;
-      padding: 16px 24px;
-      border: none;
-      border-radius: var(--radius);
-      font-family: 'Outfit', sans-serif;
-      font-size: 18px;
-      font-weight: 800;
-      cursor: pointer;
-      transition: all 0.15s;
-      position: relative;
-      overflow: hidden;
-    }
+    .btn-handoff { width: 100%; padding: 16px 24px; border: none; border-radius: var(--radius); font-family: 'Outfit', sans-serif; font-size: 18px; font-weight: 800; cursor: pointer; transition: all 0.15s; position: relative; overflow: hidden; }
     .btn-handoff:active { transform: scale(0.97); }
     .btn-handoff.btn-start { background: linear-gradient(135deg, var(--green), #00b377); color: #000; box-shadow: 0 4px 20px rgba(0,214,143,0.3); }
     .btn-handoff.btn-primary { background: linear-gradient(135deg, var(--accent), #2b7fd4); color: #fff; box-shadow: 0 4px 20px rgba(59,158,255,0.3); }
     .btn-handoff.btn-finish { background: linear-gradient(135deg, var(--orange), #e6950f); color: #000; box-shadow: 0 4px 20px rgba(255,170,43,0.3); }
     
     .manual-row { display: flex; gap: 8px; margin-top: 10px; }
-    .input-time {
-      flex: 1; padding: 12px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border);
-      background: var(--surface-2); color: var(--text); font-size: 15px; font-family: inherit;
-    }
+    .input-time { flex: 1; padding: 12px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface-2); color: var(--text); font-size: 15px; font-family: inherit; }
     .input-time:focus { outline: none; border-color: var(--accent); }
-    .btn-manual {
-      padding: 10px 18px; border-radius: var(--radius-sm); border: 1px solid var(--border);
-      background: var(--surface-2); color: var(--accent);
-      font-family: 'Outfit', sans-serif; font-size: 15px; font-weight: 700; cursor: pointer; white-space: nowrap;
-    }
+    .btn-manual { padding: 10px 18px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface-2); color: var(--accent); font-family: 'Outfit', sans-serif; font-size: 15px; font-weight: 700; cursor: pointer; white-space: nowrap; }
     .btn-manual:active { background: var(--surface-3); }
 
-    /* --- DRIVER VIEW & VAN ANIMATION --- */
     .driver-destination { text-align: center; padding: 24px 16px; }
     .driver-destination-label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
     .driver-destination-address { font-size: 16px; font-weight: 600; line-height: 1.4; margin-bottom: 16px; }
-    .btn-navigate {
-      display: inline-flex; align-items: center; gap: 8px; padding: 12px 28px;
-      background: linear-gradient(135deg, var(--green), #00b377); color: #000; border: none; border-radius: var(--radius);
-      font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 800; cursor: pointer; box-shadow: 0 4px 20px rgba(0,214,143,0.3); text-decoration: none;
-    }
+    .btn-navigate { display: inline-flex; align-items: center; gap: 8px; padding: 12px 28px; background: linear-gradient(135deg, var(--green), #00b377); color: #000; border: none; border-radius: var(--radius); font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 800; cursor: pointer; box-shadow: 0 4px 20px rgba(0,214,143,0.3); text-decoration: none; }
     .btn-navigate:active { transform: scale(0.97); }
     .driver-warning { background: var(--red-glow); border: 1px solid rgba(255,92,92,0.3); border-radius: var(--radius-sm); padding: 12px 14px; font-size: 13px; color: var(--red); margin-top: 12px; font-weight: 500; }
     .driver-parking { background: var(--surface-2); border-radius: var(--radius-sm); padding: 12px 14px; font-size: 13px; color: var(--text-muted); margin-top: 12px; line-height: 1.5; }
 
-    .driver-van-sprite {
-      width: 120px; height: 60px; background-image: url('assets/van/van-sheet.png'); background-size: 300% 300%;
-      background-position: 0% 0%; margin: 0 auto 12px; image-rendering: pixelated; animation: vanBump 0.4s infinite;
-    }
+    .driver-van-sprite { width: 120px; height: 60px; background-image: url('assets/van/van-sheet.png'); background-size: 300% 300%; background-position: 0% 0%; margin: 0 auto 12px; image-rendering: pixelated; animation: vanBump 0.4s infinite; }
     @keyframes vanBump { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2px); } }
 
-    /* --- LEG DETAIL CARD --- */
     .leg-detail-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
     .leg-number { font-size: 11px; color: var(--text-muted); font-weight: 600; }
     .leg-runner { font-size: 17px; font-weight: 700; }
@@ -336,143 +172,15 @@
     .gear-badge.required { background: var(--red-glow); color: var(--red); border: 1px solid rgba(255,92,92,0.2); }
     .gear-badge.warning { background: var(--orange-glow); color: var(--orange); border: 1px solid rgba(255,170,43,0.2); }
     
-    /* --- RACE SNAKE VISUALIZER --- */
-    .race-snake-container {
-      background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border);
-      margin-bottom: 14px; padding: 16px 10px; box-shadow: var(--shadow); text-align: center;
-      transition: background-color 1.5s ease;
-    }
+    .race-snake-container { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); margin-bottom: 14px; padding: 16px 10px; box-shadow: var(--shadow); text-align: center; transition: background-color 1.5s ease; }
     .snake-title { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
     .snake-pulse { animation: pulseActive 1.5s infinite; transform-origin: center; }
     @keyframes pulseActive { 0% { r: 3; opacity: 1; } 50% { r: 8; opacity: 0.3; } 100% { r: 3; opacity: 1; } }
     .snake-path-animate { stroke-dasharray: 1000; stroke-dashoffset: 1000; animation: drawSnake 1.5s ease-out forwards; }
     @keyframes drawSnake { to { stroke-dashoffset: 0; } }
 
-    /* --- FULL RACE VIEW --- */
     .race-filter-row { display: flex; gap: 8px; margin-bottom: 14px; }
     .filter-btn { padding: 8px 14px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface); color: var(--text-muted); font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; }
     .filter-btn.active { background: var(--accent-glow); border-color: var(--accent); color: var(--accent); }
     .race-leg-row { display: flex; align-items: center; padding: 12px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 8px; gap: 12px; transition: border-color 0.2s, background-color 1.5s ease; }
-    .race-leg-row.active { border-color: var(--accent); background: var(--surface-2); }
-    .race-leg-row.complete { opacity: 0.6; }
-    .race-leg-row.major-exchange { border-left: 3px solid var(--orange); }
-    .leg-row-num { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; background: var(--surface-3); color: var(--text-muted); flex-shrink: 0; }
-    .leg-row-num.complete { background: var(--green-glow); color: var(--green); }
-    .leg-row-num.active { background: var(--accent-glow); color: var(--accent); }
-    .leg-row-info { flex: 1; min-width: 0; }
-    .leg-row-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .leg-row-meta { font-size: 11px; color: var(--text-muted); }
-    .leg-row-time { text-align: right; flex-shrink: 0; }
-    .leg-row-time-value { font-size: 13px; font-weight: 600; }
-    .leg-row-time-label { font-size: 10px; color: var(--text-muted); }
-    .leg-row-delta { font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 4px; }
-    .delta-ahead { color: var(--green); background: var(--green-glow); }
-    .delta-behind { color: var(--red); background: var(--red-glow); }
-
-    /* --- MY LEGS VIEW --- */
-    .runner-picker {
-      width: 100%; padding: 14px 16px; border-radius: var(--radius); border: 1px solid var(--border);
-      background: var(--surface); color: var(--text); font-size: 15px; font-family: inherit; font-weight: 500;
-      appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%237a8fa6' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; margin-bottom: 16px; transition: background-color 1.5s ease;
-    }
-    .section-title { font-size: 11px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; margin: 20px 0 12px; }
-
-    /* --- SETTINGS --- */
-    .setting-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; margin-bottom: 12px; transition: background-color 1.5s ease; }
-    .setting-card h3 { font-size: 13px; font-weight: 700; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
-    .btn-danger { width: 100%; padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--red); background: transparent; color: var(--red); font-family: 'Outfit', sans-serif; font-size: 15px; font-weight: 700; cursor: pointer; transition: background 0.2s; }
-    .btn-danger:active { background: var(--red-glow); }
-
-    /* --- ELEVATION MINI VIZ & BADGES --- */
-    .elev-viz { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); }
-    .elev-arrow-up { color: var(--red); }
-    .elev-arrow-down { color: var(--green); }
-    .van-badge { font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
-    .van-badge-1 { background: var(--accent-glow); color: var(--accent); }
-    .van-badge-2 { background: var(--orange-glow); color: var(--orange); }
-
-    /* --- PACE EDITOR --- */
-    .pace-edit-row { display: flex; align-items: center; gap: 6px; margin-top: 10px; }
-    .pace-input { width: 48px; padding: 8px; border-radius: var(--radius-xs); border: 1px solid var(--border); background: var(--surface-3); color: var(--text); font-size: 15px; font-weight: 600; text-align: center; font-family: inherit; }
-    .pace-input:focus { outline: none; border-color: var(--accent); }
-    .pace-sep { font-size: 18px; font-weight: 800; color: var(--text-muted); }
-    .pace-label { font-size: 12px; color: var(--text-muted); }
-    .pace-est { margin-left: auto; font-size: 13px; color: var(--text-muted); font-weight: 500; }
-  </style>
-</head>
-<body>
-
-  <div class="header" id="appHeader">
-    <div class="header-brand">
-      <div class="header-logo">HTC</div>
-      <div>
-        <h1>Deuces Wild</h1>
-        <div class="header-sub" id="headerSub">Hood to Coast 2026</div>
-        <div class="header-sub" id="syncStatus" style="color: var(--accent); margin-top: 4px; font-weight: 700;">📡 Initializing...</div>
-      </div>
-    </div>
-    <div class="race-progress-bar">
-      <div class="race-progress-fill" id="progressFill" style="width:0%"></div>
-    </div>
-    <div class="header-stats">
-      <div class="header-stat">
-        <div class="header-stat-value" id="hdrLeg">--/36</div>
-        <div class="header-stat-label">Leg</div>
-      </div>
-      <div class="header-stat">
-        <div class="header-stat-value" id="hdrMiles">0.0</div>
-        <div class="header-stat-label">Miles Done</div>
-      </div>
-      <div class="header-stat">
-        <div class="header-stat-value" id="hdrDelta">--</div>
-        <div class="header-stat-label">vs Projected</div>
-      </div>
-      <div class="header-stat">
-        <div class="header-stat-value" id="hdrFinish">--:--</div>
-        <div class="header-stat-label">ETA Finish</div>
-      </div>
-    </div>
-  </div>
-
-  <div class="view active" id="viewRace"></div>
-
-  <div class="view" id="viewDriver"></div>
-
-  <div class="view" id="viewMyLegs"></div>
-
-  <div class="view" id="viewFull"></div>
-
-  <div class="view" id="viewSettings"></div>
-
-  <nav class="nav">
-    <button class="nav-btn active" data-view="viewRace" onclick="switchView('viewRace')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg>
-      Race
-    </button>
-    <button class="nav-btn" data-view="viewDriver" onclick="switchView('viewDriver')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-      Driver
-    </button>
-    <button class="nav-btn" data-view="viewMyLegs" onclick="switchView('viewMyLegs')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-      For You
-    </button>
-    <button class="nav-btn" data-view="viewFull" onclick="switchView('viewFull')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
-      Full Race
-    </button>
-    <button class="nav-btn" data-view="viewSettings" onclick="switchView('viewSettings')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-      Settings
-    </button>
-  </nav>
-
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-
-  <script src="data.js"></script>
-  <script src="engine.js"></script>
-  <script src="app.js"></script> 
-  <script src="sync.js"></script> 
-</body>
-</html>
+    .race-leg-row
