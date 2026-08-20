@@ -12,7 +12,7 @@
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=VT323&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:wght@600;700;800;900&display=swap" rel="stylesheet">
   
   <style>
     :root {
@@ -73,7 +73,7 @@
       padding-bottom: 90px;
       -webkit-font-smoothing: antialiased;
       overflow-x: hidden;
-      transition: background-color 1.5s ease; /* Smooth Day/Night Transitions! */
+      transition: background-color 1.5s ease;
     }
 
     /* Day/Night Data Attribute Selectors */
@@ -131,15 +131,17 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      font-family: 'VT323', monospace;
-      font-size: 22px;
+      font-family: 'Outfit', sans-serif;
+      font-size: 18px;
+      letter-spacing: -0.5px;
+      font-weight: 900;
       color: white;
     }
     .header h1 {
-      font-family: 'VT323', monospace;
-      font-size: 26px;
-      letter-spacing: 0.5px;
-      font-weight: 400;
+      font-family: 'Outfit', sans-serif;
+      font-size: 22px;
+      letter-spacing: -0.5px;
+      font-weight: 800;
       background: linear-gradient(135deg, var(--text), var(--accent));
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
@@ -234,19 +236,19 @@
       100% { box-shadow: 0 0 0 0 rgba(255, 170, 43, 0); }
     }
 
-    /* --- ACTIVE RUNNER CARD & ARCADE TYPOGRAPHY --- */
+    /* --- ACTIVE RUNNER CARD & PREMIUM TYPOGRAPHY --- */
     .active-runner-card { position: relative; overflow: hidden; }
     .active-runner-card::before {
       content: ''; position: absolute; top: -50%; right: -30%; width: 200px; height: 200px;
       background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%); pointer-events: none;
     }
     .active-runner-name {
-      font-family: 'VT323', monospace;
-      font-size: 34px;
-      letter-spacing: 1px;
-      font-weight: 400;
+      font-family: 'Outfit', sans-serif;
+      font-size: 28px;
+      letter-spacing: -0.5px;
+      font-weight: 800;
       margin-bottom: 2px;
-      line-height: 1;
+      line-height: 1.1;
     }
     .active-runner-subtitle { font-size: 13px; color: var(--text-muted); margin-bottom: 16px; }
     .live-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
@@ -274,9 +276,9 @@
       padding: 16px 24px;
       border: none;
       border-radius: var(--radius);
-      font-family: 'VT323', monospace;
-      font-size: 24px;
-      letter-spacing: 1px;
+      font-family: 'Outfit', sans-serif;
+      font-size: 18px;
+      font-weight: 800;
       cursor: pointer;
       transition: all 0.15s;
       position: relative;
@@ -296,7 +298,7 @@
     .btn-manual {
       padding: 10px 18px; border-radius: var(--radius-sm); border: 1px solid var(--border);
       background: var(--surface-2); color: var(--accent);
-      font-family: 'VT323', monospace; font-size: 20px; cursor: pointer; white-space: nowrap;
+      font-family: 'Outfit', sans-serif; font-size: 15px; font-weight: 700; cursor: pointer; white-space: nowrap;
     }
     .btn-manual:active { background: var(--surface-3); }
 
@@ -307,7 +309,7 @@
     .btn-navigate {
       display: inline-flex; align-items: center; gap: 8px; padding: 12px 28px;
       background: linear-gradient(135deg, var(--green), #00b377); color: #000; border: none; border-radius: var(--radius);
-      font-family: 'VT323', monospace; font-size: 22px; cursor: pointer; box-shadow: 0 4px 20px rgba(0,214,143,0.3); text-decoration: none;
+      font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 800; cursor: pointer; box-shadow: 0 4px 20px rgba(0,214,143,0.3); text-decoration: none;
     }
     .btn-navigate:active { transform: scale(0.97); }
     .driver-warning { background: var(--red-glow); border: 1px solid rgba(255,92,92,0.3); border-radius: var(--radius-sm); padding: 12px 14px; font-size: 13px; color: var(--red); margin-top: 12px; font-weight: 500; }
@@ -378,7 +380,7 @@
     /* --- SETTINGS --- */
     .setting-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; margin-bottom: 12px; transition: background-color 1.5s ease; }
     .setting-card h3 { font-size: 13px; font-weight: 700; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
-    .btn-danger { width: 100%; padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--red); background: transparent; color: var(--red); font-family: 'VT323', monospace; font-size: 20px; cursor: pointer; transition: background 0.2s; }
+    .btn-danger { width: 100%; padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--red); background: transparent; color: var(--red); font-family: 'Outfit', sans-serif; font-size: 15px; font-weight: 700; cursor: pointer; transition: background 0.2s; }
     .btn-danger:active { background: var(--red-glow); }
 
     /* --- ELEVATION MINI VIZ & BADGES --- */
@@ -459,18 +461,4 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
       Full Race
     </button>
-    <button class="nav-btn" data-view="viewSettings" onclick="switchView('viewSettings')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-      Settings
-    </button>
-  </nav>
-
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-
-  <script src="data.js"></script>
-  <script src="engine.js"></script>
-  <script src="app.js"></script> 
-  <script src="sync.js"></script> 
-</body>
-</html>
+    <button class="nav-btn" data-view="viewSettings"
