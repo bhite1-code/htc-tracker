@@ -1,5 +1,4 @@
 // --- GLOBAL CRASH CATCHER ---
-// If the app freezes, this prints a blindingly obvious exact error to the screen!
 window.onerror = function(msg, url, lineNo, columnNo, error) {
   const errDiv = document.createElement('div');
   errDiv.style.cssText = 'position:fixed; inset:0; background:white; color:red; z-index:999999; padding:40px; font-size:20px; overflow-y:auto;';
@@ -100,7 +99,7 @@ class SpriteAnimator {
 
 window.spriteAnimator = new SpriteAnimator();
 
-// --- Persisted runner selection ---
+// --- PERSISTED SETTINGS ---
 function getMyRunnerId() {
   return parseInt(localStorage.getItem('htc_my_runner') || '1');
 }
@@ -108,7 +107,7 @@ function setMyRunnerId(id) {
   localStorage.setItem('htc_my_runner', id.toString());
 }
 
-// --- View Switching ---
+// --- VIEW SWITCHING ---
 function switchView(viewId) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById(viewId).classList.add('active');
@@ -217,7 +216,6 @@ function generateRaceSnakeSVG(currentLeg) {
       fill = 'var(--accent)';
       stroke = '#fff';
       strokeW = 2;
-      
       pulse = `<circle cx="${pt.x}" cy="${pt.y}" r="6" fill="var(--accent)" class="snake-pulse" opacity="0.6"/>`;
     }
 
@@ -239,7 +237,6 @@ function renderRaceView() {
   const runnerFirstName = runner.name.split(' ')[0].toLowerCase();
   const prefillSrc = `assets/${runnerFirstName}/run/down/1.png`;
 
-  // FIXED GOOGLE MAPS URL
   const mapNavUrl = `https://www.google.com/maps/search/?api=1&query=${leg.gps.lat},${leg.gps.lng}`;
 
   let html = `
@@ -375,7 +372,7 @@ function renderDriverView() {
         <div class="driver-destination-label">Next Exchange</div>
         <div class="driver-destination-address">${nextLeg.legData.exchangeAddress}</div>
         <a href="https://www.google.com/maps/search/?api=1&query=${nextLeg.legData.gps.lat},${nextLeg.legData.gps.lng}" target="_blank" class="btn-navigate" style="background:var(--surface-3);color:var(--text);box-shadow:none;">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>
           Preview in Maps
         </a>
       </div>
@@ -530,7 +527,6 @@ function renderMyLegsView() {
 
   document.getElementById('viewMyLegs').innerHTML = html;
 }
-
 
 function renderContextHero(context, runner, runnerId) {
   const { mode, nextLeg, legsUntil, minutesUntil } = context;
@@ -721,6 +717,19 @@ function renderSettingsView() {
   const fixLegOptions = completedLegs.map(l => `<option value="${l}">Leg ${l}</option>`).join('');
 
   document.getElementById('viewSettings').innerHTML = `
+    
+    <div class="setting-card" style="border-color: var(--accent); background: linear-gradient(135deg, rgba(59, 158, 255, 0.05), var(--surface));">
+      <h3 style="color:var(--accent);">📻 Off-Grid Radio Sync</h3>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">Share your van's recent completed legs, or import a bulk code received from the other van via Meshtastic.</p>
+      
+      <button class="btn-manual" style="width:100%; margin-bottom:8px; background: rgba(59, 158, 255, 0.1); border-color:var(--accent);" onclick="exportBulkSync()">
+        📤 Copy Outbound Sync (Last 6 Legs)
+      </button>
+      <button class="btn-manual" style="width:100%; background:var(--surface-3); border-color:var(--accent); color:var(--text);" onclick="importBulkSync()">
+        📥 Paste Inbound Sync
+      </button>
+    </div>
+
     <div class="setting-card">
       <h3>Race Info</h3>
       <p style="font-size:14px;font-weight:600;">Hood to Coast 2026 — 44th Annual</p>
@@ -765,6 +774,98 @@ function renderSettingsView() {
       <button class="btn-danger" onclick="confirmReset()">Reset Race Progress</button>
     </div>
   `;
+}
+
+// --- TOAST NOTIFICATIONS ---
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.textContent = msg;
+  t.style.cssText = "position:fixed; top:80px; left:50%; transform:translateX(-50%); background:var(--accent); color:#fff; padding:12px 24px; border-radius:30px; font-weight:800; font-family:Outfit, sans-serif; z-index:99999; box-shadow:0 8px 24px rgba(0,0,0,0.5); font-size:15px; pointer-events:none; text-align:center; white-space:nowrap; animation: toastIn 0.3s ease-out;";
+  document.body.appendChild(t);
+  setTimeout(() => {
+    t.style.opacity = '0';
+    t.style.transition = 'opacity 0.4s ease';
+    setTimeout(() => t.remove(), 400);
+  }, 3500);
+}
+
+// --- BULK OFFLINE SYNC LOGIC ---
+function exportBulkSync() {
+  if (!navigator.clipboard) return alert("Clipboard API not supported by this browser.");
+  
+  let syncData = [];
+  
+  // Scrape the engine for every single completed leg so far
+  for (let i = 1; i <= 36; i++) {
+    if (engine.state.actuals[`leg_${i}_end`]) {
+      let d = new Date(engine.state.actuals[`leg_${i}_end`]);
+      let hh = String(d.getHours()).padStart(2, '0');
+      let mm = String(d.getMinutes()).padStart(2, '0');
+      syncData.push(`${i}:${hh}${mm}`); 
+    }
+  }
+  
+  if (syncData.length === 0) return showToast("No completed legs to sync yet!");
+  
+  // Extract only the last 6 completed legs to keep the Meshtastic text message tiny
+  let payloadArr = syncData.slice(-6);
+  let payloadStr = `HTC|SYNC|${payloadArr.join(',')}`;
+  
+  navigator.clipboard.writeText(payloadStr).then(() => {
+    showToast(`📻 Copied ${payloadArr.length} legs to clipboard!`);
+  }).catch(e => {
+    alert("Clipboard copy failed.");
+  });
+}
+
+async function importBulkSync() {
+  try {
+    const text = await navigator.clipboard.readText();
+    
+    // Strict validation to ensure it's our exact app code
+    if (!text || !text.startsWith("HTC|SYNC|")) {
+      return alert("No valid Bulk Sync code found on clipboard.\nMake sure it starts with HTC|SYNC|");
+    }
+    
+    const dataStr = text.replace("HTC|SYNC|", "");
+    const pairs = dataStr.split(',');
+    let importedCount = 0;
+    
+    const raceStart = new Date(RACE_CONFIG.startTime);
+    
+    pairs.forEach(pair => {
+      const parts = pair.split(':');
+      if (parts.length === 2 && parts[1].length === 4) {
+        const leg = parseInt(parts[0]);
+        const hrs = parseInt(parts[1].substring(0,2));
+        const mins = parseInt(parts[1].substring(2,4));
+        
+        let logTime = new Date(raceStart);
+        logTime.setHours(hrs, mins, 0, 0);
+        
+        if (logTime.getTime() < engine.getRaceStartMs() - 3600000) {
+          logTime.setDate(logTime.getDate() + 1);
+        }
+        
+        // Inject the math into the engine and bypass UI logging
+        engine.state.actuals[`leg_${leg}_end`] = logTime.getTime();
+        if (leg < 36) {
+          engine.state.actuals[`leg_${leg + 1}_start`] = logTime.getTime();
+        }
+        importedCount++;
+      }
+    });
+    
+    if (importedCount > 0) {
+      engine.saveState();
+      renderView('viewSettings');
+      showToast(`✅ Successfully synced ${importedCount} legs!`);
+    } else {
+      alert("Could not parse the times in the sync code.");
+    }
+  } catch(e) {
+    alert("Clipboard access denied or clipboard is empty.");
+  }
 }
 
 // --- ACTIONS ---
@@ -965,10 +1066,26 @@ function renderLegRow(s) {
 // --- INIT ---
 try {
   renderView('viewRace');
+  
+  // Custom CSS animation for Toast
+  const style = document.createElement('style');
+  style.innerHTML = `@keyframes toastIn { from { top: -20px; opacity: 0; } to { top: 80px; opacity: 1; } }`;
+  document.head.appendChild(style);
+  
 } catch (e) {
   console.error("Critical Render Failure:", e);
   const errDiv = document.createElement('div');
   errDiv.style.cssText = 'position:fixed; inset:0; background:white; color:red; z-index:999999; padding:40px; font-size:20px; overflow-y:auto;';
   errDiv.innerHTML = `<strong>RENDER FAILED</strong><br><br>${e.message}<br><br><button onclick="localStorage.clear(); window.location.reload(true);" style="padding:20px; background:black; color:white; width:100%; font-size:18px;">HARD RESET APP</button>`;
   document.body.appendChild(errDiv);
+}
+
+// --- THE SW TERMINATOR ---
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then(function(registrations) {
+    for(let registration of registrations) {
+      registration.unregister();
+      console.log("Service Worker Terminated to clear cache.");
+    }
+  });
 }
