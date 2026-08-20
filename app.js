@@ -7,7 +7,7 @@ const SPRITE_CONFIG = { idle: 2, run: 8, sit: 1 };
 class SpriteAnimator {
   constructor() {
     this.sprites = [];
-    this.vanSprite = null;
+    this.vanSprites = [];
     this.vanFrame = 0;
     this.sitTimer = 0;
     this.isSitting = false;
@@ -48,7 +48,7 @@ class SpriteAnimator {
       };
     });
 
-    this.vanSprite = document.getElementById('driver-van-sprite');
+    this.vanSprites = Array.from(document.querySelectorAll('.driver-van-sprite'));
     this.tick();
   }
 
@@ -77,11 +77,13 @@ class SpriteAnimator {
       };
     });
 
-    if (this.vanSprite) {
+    if (this.vanSprites && this.vanSprites.length > 0) {
       this.vanFrame = (this.vanFrame + 1) % 9;
       const col = this.vanFrame % 3;
       const row = Math.floor(this.vanFrame / 3);
-      this.vanSprite.style.backgroundPosition = `${col * 50}% ${row * 50}%`;
+      this.vanSprites.forEach(van => {
+         van.style.backgroundPosition = `${col * 50}% ${row * 50}%`;
+      });
     }
   }
 }
@@ -117,6 +119,20 @@ function renderView(viewId) {
   window.spriteAnimator.mount();
 }
 
+// --- DAY/NIGHT ENVIRONMENT ENGINE ---
+function updateDayNightCycle() {
+  const current = Math.max(1, Math.min(engine.getCurrentLeg(), 36));
+  const summary = engine.getLegSummary(current);
+  const date = new Date(summary.projectedStart);
+  const hour = date.getHours();
+  
+  let timeOfDay = 'day';
+  if (hour >= 20 || hour < 5) timeOfDay = 'night';
+  else if (hour >= 5 && hour < 8) timeOfDay = 'dawn';
+  
+  document.body.setAttribute('data-time', timeOfDay);
+}
+
 // --- HEADER ---
 function renderHeader() {
   const current = engine.getCurrentLeg();
@@ -140,12 +156,10 @@ function renderHeader() {
     hdrDelta.style.color = delta > 0 ? 'var(--red)' : delta < 0 ? 'var(--green)' : '';
   }
 
-  document.getElementById('headerSub').textContent = engine.state.raceStarted
-    ? `Race in progress • Leg ${current}`
-    : 'Fri Aug 28 • 5:35 AM Start';
+  updateDayNightCycle();
 }
 
-// --- RACE SNAKE VISUALIZER ---
+// --- RACE SNAKE VISUALIZER (WITH MINI-VAN!) ---
 function generateRaceSnakeSVG(currentLeg) {
   const lats = RACE_CONFIG.legs.map(l => l.gps.lat);
   const minLat = Math.min(...lats), maxLat = Math.max(...lats);
@@ -166,7 +180,7 @@ function generateRaceSnakeSVG(currentLeg) {
   const completedPoints = points.slice(0, currentLeg); 
   if (completedPoints.length > 1) {
     const compPath = completedPoints.map((pt, i) => `${i === 0 ? 'M' : 'L'} ${pt.x},${pt.y}`).join(' ');
-    svg += `<path d="${compPath}" fill="none" stroke="url(#snakeGrad)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />`;
+    svg += `<path d="${compPath}" fill="none" stroke="url(#snakeGrad)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" class="snake-path-animate" />`;
   }
 
   svg += `<defs>
@@ -193,7 +207,13 @@ function generateRaceSnakeSVG(currentLeg) {
       fill = 'var(--accent)';
       stroke = '#fff';
       strokeW = 2;
-      pulse = `<circle cx="${pt.x}" cy="${pt.y}" r="6" fill="var(--accent)" class="snake-pulse" opacity="0.6"/>`;
+      
+      pulse = `
+        <circle cx="${pt.x}" cy="${pt.y}" r="6" fill="var(--accent)" class="snake-pulse" opacity="0.6"/>
+        <foreignObject x="${pt.x - 14}" y="${pt.y - 18}" width="28" height="28" style="overflow:visible;">
+          <div xmlns="http://www.w3.org/1999/xhtml" class="driver-van-sprite" style="width: 100%; height: 100%; margin:0; background-image: url('assets/van/van-sheet.png'); background-size: 300% 300%; background-position: 0% 0%; image-rendering: pixelated; animation: vanBump 0.4s infinite;"></div>
+        </foreignObject>
+      `;
     }
 
     svg += pulse + `<circle cx="${pt.x}" cy="${pt.y}" r="${r}" fill="${fill}" stroke="${stroke}" stroke-width="${strokeW}" />`;
@@ -216,14 +236,14 @@ function renderRaceView() {
 
   let html = `
     <div class="race-snake-container">
-      <div class="snake-title">Course Progress (Mt. Hood &rarr; Seaside)</div>
+      <div class="snake-title">Course Progress (Mt. Hood → Seaside)</div>
       ${generateRaceSnakeSVG(current)}
     </div>
 
     <div class="card card-glow-blue active-runner-card">
       <div style="display:flex;gap:16px;align-items:center;position:relative;z-index:1;margin-bottom:16px;">
-        <div style="width: 72px; height: 72px; border-radius: var(--radius-sm); background: rgba(0,0,0,0.2); border: 1px solid var(--border); display: flex; justify-content: center; align-items: center; flex-shrink: 0;">
-          <img class="runner-sprite-el" data-runner="${runner.name}" data-state="run" src="${prefillSrc}" onerror="this.style.opacity='0'" style="width: 56px; height: 56px; image-rendering: pixelated; object-fit: contain; transition: opacity 0.2s;">
+        <div style="width: 80px; height: 80px; border-radius: var(--radius-sm); background: rgba(0,0,0,0.2); border: 1px solid var(--border); display: flex; justify-content: center; align-items: center; flex-shrink: 0; overflow:hidden;">
+          <img class="runner-sprite-el" data-runner="${runner.name}" data-state="run" src="${prefillSrc}" onerror="this.style.opacity='0'" style="width: 100%; height: 100%; image-rendering: pixelated; object-fit: contain; transition: opacity 0.2s;">
         </div>
 
         <div style="flex:1;">
@@ -235,8 +255,8 @@ function renderRaceView() {
           </div>
         </div>
         <div style="text-align:right;">
-          <div style="font-size:32px;font-weight:900;color:var(--accent);">${current}</div>
-          <div style="font-size:10px;color:var(--text-muted);">LEG</div>
+          <div style="font-size:42px; font-family:Outfit, sans-serif; font-weight:900; letter-spacing:-1px; color:var(--accent); line-height: 0.8; margin-bottom: 4px;">${current}</div>
+          <div style="font-size:10px;color:var(--text-muted);font-weight:700;">LEG</div>
         </div>
       </div>
       <div class="live-stats">
@@ -257,38 +277,48 @@ function renderRaceView() {
 
     <div class="handoff-container">
       ${!engine.state.raceStarted ? `
-        <button class="btn-handoff btn-start" onclick="startRace()">▶ Start Race — Go Runner 1!</button>
+        <button class="btn-handoff btn-start" onclick="startRace()">▶ Start Race!</button>
       ` : current === 36 && engine.isLegComplete(36) ? `
         <button class="btn-handoff btn-finish" disabled style="opacity:0.7;">🎉 RACE COMPLETE!</button>
       ` : `
         <button class="btn-handoff ${current === 36 ? 'btn-finish' : 'btn-primary'}" onclick="logHandoffNow()">
-          ${current === 36 ? '🏁 Log Finish!' : `⚡ Log Handoff — Leg ${current} → ${current + 1}`}
+          ${current === 36 ? '🏁 Log Finish!' : `⚡ Log Handoff → ${current + 1}`}
         </button>
       `}
       <div class="manual-row">
         <input type="time" class="input-time" id="manualTime" step="60" placeholder="Manual time">
-        <button class="btn-manual" onclick="logManualHandoff()">Log Time</button>
+        <button class="btn-manual" onclick="logManualHandoff()">Update</button>
       </div>
     </div>
 
-    <div style="margin-top:14px;">
-      <a href="https://www.google.com/maps/dir/?api=1&destination=${leg.gps.lat},${leg.gps.lng}"
+    <div style="margin-top:20px; margin-bottom: 12px;">
+      <a href="https://maps.google.com/?q=$${leg.gps.lat},${leg.gps.lng}"
          target="_blank"
-         style="display:flex;align-items:center;gap:10px;padding:14px 16px;border-radius:var(--radius-sm);background:var(--surface-2);border:1px solid var(--border);text-decoration:none;color:var(--text);">
-        <span style="font-size:20px;">📍</span>
-        <div style="flex:1;">
-          <div style="font-size:12px;color:var(--text-muted);">Exchange ${current} — Navigate</div>
-          <div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${leg.exchangeAddress}</div>
+         style="display:flex;align-items:center;gap:12px;padding:16px;border-radius:var(--radius-sm);background:var(--surface-2);border:1px solid var(--border);text-decoration:none;color:var(--text);box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+        <div style="width: 32px; height: 32px; flex-shrink:0;">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 2C8.13 2 5 5.13 5 9C5 14.25 12 22 12 22C12 22 19 14.25 19 9C19 5.13 15.87 2 12 2ZM12 11.5C10.62 11.5 9.5 10.38 9.5 9C9.5 7.62 10.62 6.5 12 6.5C13.38 6.5 14.5 7.62 14.5 9C14.5 10.38 13.38 11.5 12 11.5Z" fill="#3b9eff"/>
+            </svg>
         </div>
-        <span style="color:var(--green);font-size:12px;font-weight:600;">GO →</span>
+        
+        <div style="flex:1;">
+          <div style="font-size:11px; font-weight: 700; color:var(--accent); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom:2px;">Navigate to Exchange ${current}</div>
+          <div style="font-size:14px; font-weight:500; line-height:1.4; color:var(--text); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">
+              ${leg.exchangeAddress}
+          </div>
+        </div>
+        
+        <div style="flex-shrink:0; background: rgba(0, 214, 143, 0.15); border-radius: 20px; padding: 6px 12px; display:flex; align-items:center; gap: 4px;">
+            <span style="color:var(--green);font-size:12px;font-weight:700;">GO</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="3"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </div>
       </a>
     </div>
 
     ${nextMajorExch ? `
-    <div class="major-exchange-callout">
-      <div class="major-exchange-callout-title">Next Major Van Exchange</div>
-      <div class="major-exchange-callout-time">Exchange ${nextMajorExch.leg} — ${RaceEngine.formatTimeWithDay(nextMajorExch.projectedEnd)}</div>
-      <div class="major-exchange-callout-sub">${nextMajorExch.legData.exchangeAddress}</div>
+    <div style="margin-top: 16px; padding: 12px; background: rgba(0,0,0,0.2); border-left: 3px solid var(--orange); border-radius: 0 var(--radius-sm) var(--radius-sm) 0;">
+      <div style="font-size: 11px; font-weight: 700; color: var(--orange); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Next Major Exchange: ${nextMajorExch.leg}</div>
+      <div style="font-size: 13px; color: var(--text-muted);">ETA: <strong style="color:var(--text);">${RaceEngine.formatTimeWithDay(nextMajorExch.projectedEnd)}</strong></div>
     </div>` : ''}
 
     <div class="section-title">Coming Up</div>
@@ -310,7 +340,7 @@ function renderDriverView() {
   const leg = summary.legData;
   const nextLeg = current < 36 ? engine.getLegSummary(current + 1) : null;
 
-  const gpsUrl = `https://www.google.com/maps/dir/?api=1&destination=${leg.gps.lat},${leg.gps.lng}`;
+  const gpsUrl = `https://maps.google.com/?q=$${leg.gps.lat},${leg.gps.lng}`;
 
   let warnings = [];
   if (leg.notes.includes('NOT ALLOWED TO STOP')) warnings.push(leg.notes);
@@ -321,7 +351,7 @@ function renderDriverView() {
   let html = `
     <div class="card card-glow-green">
       <div class="driver-destination">
-        <div id="driver-van-sprite" class="driver-van-sprite"></div>
+        <div class="driver-van-sprite"></div>
         <div class="driver-destination-label">Driving to Exchange ${current}</div>
         <div class="driver-destination-address">${leg.exchangeAddress}</div>
         <a href="${gpsUrl}" target="_blank" class="btn-navigate">
@@ -339,7 +369,7 @@ function renderDriverView() {
       <div class="driver-destination">
         <div class="driver-destination-label">Next Exchange</div>
         <div class="driver-destination-address">${nextLeg.legData.exchangeAddress}</div>
-        <a href="https://www.google.com/maps/dir/?api=1&destination=${nextLeg.legData.gps.lat},${nextLeg.legData.gps.lng}" target="_blank" class="btn-navigate" style="background:var(--surface-3);color:var(--text);box-shadow:none;">
+        <a href="https://maps.google.com/?q=$${nextLeg.legData.gps.lat},${nextLeg.legData.gps.lng}" target="_blank" class="btn-navigate" style="background:var(--surface-3);color:var(--text);box-shadow:none;">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>
           Preview in Maps
         </a>
@@ -371,6 +401,13 @@ function getContextMode(runnerId) {
   return { mode: 'RESTING', nextLeg: myNextLeg, legsUntil, minutesUntil };
 }
 
+function formatTimeLeft(totalMins) {
+  if (totalMins < 60) return `${totalMins} min`;
+  const h = Math.floor(totalMins / 60);
+  const m = totalMins % 60;
+  return `${h}h ${m}m`;
+}
+
 function renderMyLegsView() {
   const myId = getMyRunnerId();
   const runner = engine.getRunnerById(myId);
@@ -388,10 +425,10 @@ function renderMyLegsView() {
           You haven't set your anticipated pace yet. Enter a base pace below to apply it to all your legs, or adjust them individually below. <strong>These save automatically and won't delete if we reset the race.</strong>
         </div>
         <div style="display: flex; gap: 8px; align-items: center;">
-            <input type="number" id="basePaceMin" placeholder="Min" style="width: 65px; padding: 10px; background: var(--bg-base); border: 1px solid var(--border); color: white; border-radius: 6px; font-size: 16px; text-align: center;">
+            <input type="number" id="basePaceMin" placeholder="Min" style="width: 65px; padding: 10px; background: var(--surface-3); border: 1px solid var(--border); color: white; border-radius: 6px; font-size: 16px; text-align: center;">
             <span style="font-weight:bold;">:</span>
-            <input type="number" id="basePaceSec" placeholder="Sec" style="width: 65px; padding: 10px; background: var(--bg-base); border: 1px solid var(--border); color: white; border-radius: 6px; font-size: 16px; text-align: center;">
-            <button class="btn-primary" style="padding: 10px 16px; flex: 1; font-size: 14px;" onclick="applyBasePace(${myId})">Apply Base Pace</button>
+            <input type="number" id="basePaceSec" placeholder="Sec" style="width: 65px; padding: 10px; background: var(--surface-3); border: 1px solid var(--border); color: white; border-radius: 6px; font-size: 16px; text-align: center;">
+            <button class="btn-primary" style="padding: 10px 16px; flex: 1; font-family:Outfit, sans-serif; font-size: 16px; font-weight: 700; border-radius: 6px; border:none; color:white; background: linear-gradient(135deg, var(--accent), #2b7fd4);" onclick="applyBasePace(${myId})">Apply</button>
         </div>
       </div>
     `;
@@ -426,10 +463,10 @@ function renderMyLegsView() {
               ${isComplete ? '✓ ' : isNext ? '▶ ' : ''}LEG ${leg.leg}
               ${isNext ? '<span style="font-size:10px;color:var(--accent);margin-left:6px;">NEXT UP</span>' : ''}
             </div>
-            <div class="leg-runner" style="font-size:15px;">
-              <span class="diff-badge diff-${leg.difficulty}">${RaceEngine.difficultyLabel(leg.difficulty)}</span>
-              ${leg.noCellCoverage ? '<span class="gear-badge warning">📵 No Cell</span>' : ''}
-              ${leg.gravel ? '<span class="gear-badge warning">🪨 Gravel</span>' : ''}
+            <div class="leg-runner" style="font-family:Outfit, sans-serif; font-size:20px; font-weight:800; letter-spacing:-0.5px; margin-bottom:2px;">
+              <span class="diff-badge diff-${leg.difficulty}" style="font-family:Inter, sans-serif;">${RaceEngine.difficultyLabel(leg.difficulty)}</span>
+              ${leg.noCellCoverage ? '<span class="gear-badge warning" style="font-family:Inter, sans-serif;">📵 No Cell</span>' : ''}
+              ${leg.gravel ? '<span class="gear-badge warning" style="font-family:Inter, sans-serif;">🪨 Gravel</span>' : ''}
             </div>
           </div>
           <span class="van-badge van-badge-${leg.van}">Van ${leg.van}</span>
@@ -489,14 +526,6 @@ function renderMyLegsView() {
   document.getElementById('viewMyLegs').innerHTML = html;
 }
 
-// NEW: Universal time formatter for massive pre-race wait times
-function formatTimeLeft(totalMins) {
-  if (totalMins < 60) return `${totalMins} min`;
-  const h = Math.floor(totalMins / 60);
-  const m = totalMins % 60;
-  return `${h}h ${m}m`;
-}
-
 function renderContextHero(context, runner, runnerId) {
   const { mode, nextLeg, legsUntil, minutesUntil } = context;
   const spriteState = mode === 'RUNNING' ? 'run' : 'idle';
@@ -504,9 +533,10 @@ function renderContextHero(context, runner, runnerId) {
   
   const prefillSrc = `assets/${runnerFirstName}/${spriteState}/down/1.png`;
 
+  // NEW: Updated Hero Sprite Box to allow the image to scale full width
   const spriteBox = `
-    <div style="width: 100px; height: 100px; border-radius: var(--radius-sm); background: rgba(0,0,0,0.2); border: 1px solid var(--border); display: flex; justify-content: center; align-items: center; flex-shrink: 0;">
-      <img class="runner-sprite-el" data-runner="${runner.name}" data-state="${spriteState}" src="${prefillSrc}" onerror="this.style.opacity='0'" style="width: 80px; height: 80px; image-rendering: pixelated; object-fit: contain; transition: opacity 0.2s;">
+    <div style="width: 100px; height: 100px; border-radius: var(--radius-sm); background: rgba(0,0,0,0.2); border: 1px solid var(--border); display: flex; justify-content: center; align-items: center; flex-shrink: 0; overflow:hidden;">
+      <img class="runner-sprite-el" data-runner="${runner.name}" data-state="${spriteState}" src="${prefillSrc}" onerror="this.style.opacity='0'" style="width: 100%; height: 100%; image-rendering: pixelated; object-fit: contain; transition: opacity 0.2s;">
     </div>
   `;
 
@@ -519,7 +549,7 @@ function renderContextHero(context, runner, runnerId) {
           ${spriteBox}
           <div style="flex:1;">
             <div style="font-size:13px;color:var(--text-muted);margin-bottom:4px;">Race starts soon</div>
-            <div style="font-size:22px;font-weight:800;">Hey ${runner.name.split(' ')[0]} 👋</div>
+            <div class="active-runner-name" style="font-size:24px;">Hey ${runner.name.split(' ')[0]} 👋</div>
             <div style="font-size:13px;color:var(--text-muted);margin-top:8px;">
               Your first leg: <strong>Leg ${firstLeg.leg}</strong> • ${firstLeg.distance} mi • ${RaceEngine.difficultyLabel(firstLeg.difficulty)}
             </div>
@@ -537,7 +567,7 @@ function renderContextHero(context, runner, runnerId) {
           ${spriteBox}
           <div style="flex:1;">
             <div style="font-size:13px;color:var(--green);font-weight:700;text-transform:uppercase;letter-spacing:1px;">You're Running</div>
-            <div style="font-size:28px;font-weight:900;color:var(--text);margin:4px 0;">Leg ${nextLeg.leg}</div>
+            <div class="active-runner-name" style="font-size:28px; color:var(--text); margin:4px 0;">Leg ${nextLeg.leg}</div>
             <div style="font-size:14px;color:var(--text-muted);">${nextLeg.distance} mi • ${RaceEngine.difficultyLabel(nextLeg.difficulty)}</div>
             <div style="margin-top:8px;font-size:13px;color:var(--text-muted);">
               ⏱️ Elapsed: <strong style="color:var(--text);">${RaceEngine.formatDuration(elapsed)}</strong>
@@ -554,7 +584,7 @@ function renderContextHero(context, runner, runnerId) {
           ${spriteBox}
           <div style="flex:1;">
             <div style="font-size:13px;color:var(--orange);font-weight:700;text-transform:uppercase;letter-spacing:1px;">You're Next</div>
-            <div style="font-size:24px;font-weight:800;margin:4px 0;">Leg ${nextLeg.leg}</div>
+            <div class="active-runner-name" style="font-size:24px; margin:4px 0;">Leg ${nextLeg.leg}</div>
             <div style="font-size:13px;color:var(--text-muted);">
               ${minutesUntil > 0 ? `~${formatTimeLeft(minutesUntil)} until handoff` : 'Handoff imminent!'}
             </div>
@@ -572,9 +602,9 @@ function renderContextHero(context, runner, runnerId) {
           ${spriteBox}
           <div style="flex:1;">
             <div style="font-size:13px;color:var(--accent);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">On Deck</div>
-            <div style="font-size:20px;font-weight:700;margin:4px 0;">Leg ${nextLeg.leg} in ~${formatTimeLeft(minutesUntil)}</div>
+            <div class="active-runner-name" style="font-size:24px; margin:4px 0;">Leg ${nextLeg.leg}</div>
             <div style="font-size:12px;color:var(--text-muted);">
-              ${legsUntil} leg${legsUntil > 1 ? 's' : ''} before yours. Start getting ready.
+              ${legsUntil} leg${legsUntil > 1 ? 's' : ''} before yours. (~${formatTimeLeft(minutesUntil)})
             </div>
             <div style="font-size:12px;color:var(--text-muted);margin-top:6px;">
               Proj. Start: ${RaceEngine.formatTime(summary.projectedStart)}
@@ -590,7 +620,7 @@ function renderContextHero(context, runner, runnerId) {
           ${spriteBox}
           <div style="flex:1;">
             <div style="font-size:13px;font-weight:600;color:var(--text-dim);">Next up: Leg ${nextLeg.leg}</div>
-            <div style="font-size:22px;font-weight:800;color:var(--text-muted);margin:4px 0;">${formatTimeLeft(minutesUntil)} away</div>
+            <div class="active-runner-name" style="font-size:24px; color:var(--text-muted); margin:4px 0;">${formatTimeLeft(minutesUntil)}</div>
             <div style="font-size:12px;color:var(--text-muted);">
               Projected: ~${RaceEngine.formatTime(summary.projectedStart)}
             </div>
@@ -612,7 +642,7 @@ function renderContextHero(context, runner, runnerId) {
           ${spriteBox}
           <div style="flex:1;">
             <div style="font-size:24px;margin-bottom:4px;">🎉</div>
-            <div style="font-size:20px;font-weight:800;">You're Done!</div>
+            <div class="active-runner-name" style="font-size:24px;">You're Done!</div>
             <div style="font-size:13px;color:var(--text-muted);margin-top:4px;">
               All 3 legs complete • Total running time: ${RaceEngine.formatDuration(totalActual)}
             </div>
@@ -679,7 +709,6 @@ function setFilter(f) {
 // --- SETTINGS VIEW (NEW TIME CORRECTION ADDED HERE) ---
 function renderSettingsView() {
   
-  // Find completed legs to populate the edit dropdown
   const completedLegs = [];
   for (let i = 1; i <= 36; i++) {
     if (engine.isLegComplete(i)) completedLegs.push(i);
@@ -695,7 +724,6 @@ function renderSettingsView() {
       <p style="font-size:13px;color:var(--text-muted);">Course: 199.07 miles • 36 legs • 12 runners</p>
     </div>
 
-    <!-- NEW TIME CORRECTION MODULE -->
     <div class="setting-card">
       <h3>Fix a Wrong Entry</h3>
       <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">Accidentally clicked early or entered the wrong time? Fix it here.</p>
