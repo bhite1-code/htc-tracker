@@ -8,8 +8,8 @@ window.onerror = function(msg, url, lineNo, columnNo, error) {
 };
 
 // --- CINEMATIC INTRO CONTROLLER ---
-const PROGRESS_DURATION_MS = 10500; // Progress bar reaches 100% and button appears at 10.5s
-const AUTO_FINISH_MS = 17000;       // Full video playthrough duration
+const PROGRESS_DURATION_MS = 10500; 
+const AUTO_FINISH_MS = 17000;       
 let introInterval = null;
 let autoFinishTimeout = null;
 
@@ -49,7 +49,6 @@ function runIntroSequence() {
     }
   }, 50);
 
-  // Auto-finish after the full 17s video loop completes
   autoFinishTimeout = setTimeout(() => {
     finishIntro();
   }, AUTO_FINISH_MS);
@@ -164,6 +163,15 @@ function getMyRunnerId() {
 }
 function setMyRunnerId(id) {
   localStorage.setItem('htc_my_runner', id.toString());
+}
+
+// Check if paces are locked/set for this runner in the engine state
+function hasRunnerSetPaces(runnerId) {
+  const runnerLegs = engine.getRunnerLegs(runnerId);
+  // Check if any of their legs have a custom pace set in the engine state, or flagged in storage
+  const hasEnginePace = runnerLegs.some(l => engine.state.paces && engine.state.paces[l.leg]);
+  const hasLocalStoragePace = localStorage.getItem(`htc_paces_set_${runnerId}`) === 'true';
+  return hasEnginePace || hasLocalStoragePace;
 }
 
 // --- VIEW SWITCHING ---
@@ -431,7 +439,7 @@ function renderDriverView() {
         <div class="driver-destination-label">Next Exchange</div>
         <div class="driver-destination-address">${nextLeg.legData.exchangeAddress}</div>
         <a href="https://www.google.com/maps/search/?api=1&query=${nextLeg.legData.gps.lat},${nextLeg.legData.gps.lng}" target="_blank" class="btn-navigate" style="background:var(--surface-3);color:var(--text);box-shadow:none;">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>
           Preview in Maps
         </a>
       </div>
@@ -475,22 +483,29 @@ function renderMyLegsView() {
   const context = getContextMode(myId);
   const myLegs = engine.getRunnerLegs(myId);
 
-  const hasSetPace = localStorage.getItem(`htc_paces_set_${myId}`) === 'true';
+  const setPaces = hasRunnerSetPaces(myId);
   let pacePromptHtml = '';
   
-  if (!hasSetPace) {
+  if (!setPaces) {
     pacePromptHtml = `
       <div class="card card-glow-orange" style="margin-top:24px; padding: 16px; border-color: var(--orange);">
         <div style="font-weight: 800; color: var(--orange); margin-bottom: 8px;">⚠️ Action Required: Set Your Paces</div>
         <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px; line-height: 1.4;">
-          You haven't set your anticipated pace yet. Enter a base pace below to apply it to all your legs, or adjust them individually below. <strong>These save automatically and won't delete if we reset the race.</strong>
+          You haven't set your anticipated pace yet. Enter a base pace below to lock it to all your legs. <strong>Once saved, it locks into the engine state so it syncs across all your devices.</strong>
         </div>
         <div style="display: flex; gap: 8px; align-items: center;">
             <input type="number" id="basePaceMin" placeholder="Min" style="width: 65px; padding: 10px; background: var(--surface-3); border: 1px solid var(--border); color: white; border-radius: 6px; font-size: 16px; text-align: center;">
             <span style="font-weight:bold;">:</span>
             <input type="number" id="basePaceSec" placeholder="Sec" style="width: 65px; padding: 10px; background: var(--surface-3); border: 1px solid var(--border); color: white; border-radius: 6px; font-size: 16px; text-align: center;">
-            <button class="btn-primary" style="padding: 10px 16px; flex: 1; font-family:Outfit, sans-serif; font-size: 16px; font-weight: 700; border-radius: 6px; border:none; color:white; background: linear-gradient(135deg, var(--accent), #2b7fd4);" onclick="applyBasePace(${myId})">Apply</button>
+            <button class="btn-primary" style="padding: 10px 16px; flex: 1; font-family:Outfit, sans-serif; font-size: 16px; font-weight: 700; border-radius: 6px; border:none; color:white; background: linear-gradient(135deg, var(--accent), #2b7fd4);" onclick="applyBasePace(${myId})">Lock & Apply</button>
         </div>
+      </div>
+    `;
+  } else {
+    pacePromptHtml = `
+      <div style="margin-top: 16px; padding: 10px 14px; background: rgba(0, 214, 143, 0.1); border: 1px solid rgba(0, 214, 143, 0.3); border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: space-between;">
+        <span style="font-size: 12px; color: var(--green); font-weight: 700;">🔒 Paces Locked & Cloud Synced</span>
+        <button style="background:none; border:none; color:var(--text-muted); font-size:11px; text-decoration:underline; cursor:pointer;" onclick="unlockPaces(${myId})">Edit Paces</button>
       </div>
     `;
   }
@@ -585,6 +600,11 @@ function renderMyLegsView() {
   });
 
   document.getElementById('viewMyLegs').innerHTML = html;
+}
+
+function unlockPaces(runnerId) {
+  localStorage.removeItem(`htc_paces_set_${runnerId}`);
+  renderMyLegsView();
 }
 
 function renderContextHero(context, runner, runnerId) {
@@ -776,6 +796,7 @@ function renderSettingsView() {
   const fixLegOptions = completedLegs.map(l => `<option value="${l}">Leg ${l}</option>`).join('');
 
   document.getElementById('viewSettings').innerHTML = `
+    <!-- OFFLINE BULK SYNC -->
     <div class="setting-card" style="border-color: var(--accent); background: linear-gradient(135deg, rgba(59, 158, 255, 0.05), var(--surface));">
       <h3 style="color:var(--accent);">📻 Off-Grid Radio Sync</h3>
       <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">Share your van's recent completed legs, or import a bulk code received from the other van via Meshtastic.</p>
@@ -1040,9 +1061,12 @@ function applyBasePace(runnerId) {
     engine.setPace(l.leg, min, sec);
   });
   
+  // Lock it in engine state and flag locally
+  engine.saveState();
   localStorage.setItem(`htc_paces_set_${runnerId}`, 'true');
   renderMyLegsView();
   renderHeader();
+  showToast("🔒 Paces locked and saved to cloud sync!");
 }
 
 function updatePace(legNum, min, sec) {
