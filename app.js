@@ -1171,12 +1171,27 @@ try {
   document.body.appendChild(errDiv);
 }
 
-// --- THE SW TERMINATOR ---
+// --- SERVICE WORKER REGISTRATION & AUTO-UPDATE ---
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.getRegistrations().then(function(registrations) {
-    for(let registration of registrations) {
-      registration.unregister();
-      console.log("Service Worker Terminated to clear cache.");
-    }
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').then((reg) => {
+      console.log('✓ Service Worker Registered');
+      
+      // Listen for background updates from GitHub
+      reg.addEventListener('updatefound', () => {
+        const newWorker = reg.installing;
+        newWorker.addEventListener('statechange', () => {
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            
+            // Show interactive interactive toast to force refresh
+            const t = document.createElement('div');
+            t.innerHTML = `🚀 New Update Ready! <button style="margin-left:12px; padding:6px 14px; background:#fff; color:var(--accent); border:none; border-radius:15px; font-weight:900; font-size:13px; cursor:pointer;" onclick="window.location.reload(true)">REFRESH</button>`;
+            t.style.cssText = "position:fixed; bottom:90px; left:50%; transform:translateX(-50%); background:var(--accent); color:#fff; padding:12px 20px; border-radius:30px; font-weight:700; font-family:Outfit, sans-serif; z-index:999999; box-shadow:0 8px 24px rgba(0,0,0,0.5); font-size:14px; display:flex; align-items:center; animation: toastIn 0.3s ease-out;";
+            document.body.appendChild(t);
+            
+          }
+        });
+      });
+    }).catch(err => console.log('SW Registration FAILED:', err));
   });
 }
