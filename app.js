@@ -165,10 +165,8 @@ function setMyRunnerId(id) {
   localStorage.setItem('htc_my_runner', id.toString());
 }
 
-// Check if paces are locked/set for this runner in the engine state
 function hasRunnerSetPaces(runnerId) {
   const runnerLegs = engine.getRunnerLegs(runnerId);
-  // Check if any of their legs have a custom pace set in the engine state, or flagged in storage
   const hasEnginePace = runnerLegs.some(l => engine.state.paces && engine.state.paces[l.leg]);
   const hasLocalStoragePace = localStorage.getItem(`htc_paces_set_${runnerId}`) === 'true';
   return hasEnginePace || hasLocalStoragePace;
@@ -483,32 +481,26 @@ function renderMyLegsView() {
   const context = getContextMode(myId);
   const myLegs = engine.getRunnerLegs(myId);
 
-  const setPaces = hasRunnerSetPaces(myId);
-  let pacePromptHtml = '';
+  const isLocked = hasRunnerSetPaces(myId);
   
-  if (!setPaces) {
-    pacePromptHtml = `
-      <div class="card card-glow-orange" style="margin-top:24px; padding: 16px; border-color: var(--orange);">
-        <div style="font-weight: 800; color: var(--orange); margin-bottom: 8px;">⚠️ Action Required: Set Your Paces</div>
-        <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px; line-height: 1.4;">
-          You haven't set your anticipated pace yet. Enter a base pace below to lock it to all your legs. <strong>Once saved, it locks into the engine state so it syncs across all your devices.</strong>
-        </div>
-        <div style="display: flex; gap: 8px; align-items: center;">
-            <input type="number" id="basePaceMin" placeholder="Min" style="width: 65px; padding: 10px; background: var(--surface-3); border: 1px solid var(--border); color: white; border-radius: 6px; font-size: 16px; text-align: center;">
-            <span style="font-weight:bold;">:</span>
-            <input type="number" id="basePaceSec" placeholder="Sec" style="width: 65px; padding: 10px; background: var(--surface-3); border: 1px solid var(--border); color: white; border-radius: 6px; font-size: 16px; text-align: center;">
-            <button class="btn-primary" style="padding: 10px 16px; flex: 1; font-family:Outfit, sans-serif; font-size: 16px; font-weight: 700; border-radius: 6px; border:none; color:white; background: linear-gradient(135deg, var(--accent), #2b7fd4);" onclick="applyBasePace(${myId})">Lock & Apply</button>
-        </div>
+  // Top Banner: Pre-fill Quick Bar
+  let topPaceBarHtml = `
+    <div class="card card-glow-orange" style="margin-top:20px; padding: 16px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+        <span style="font-size:13px; font-weight:800; color:var(--orange);">⚡ Quick Fill Base Pace</span>
+        ${isLocked ? '<span style="font-size:11px; color:var(--green); font-weight:700;">🔒 Paces Locked</span>' : '<span style="font-size:11px; color:var(--text-muted);">Unsaved</span>'}
       </div>
-    `;
-  } else {
-    pacePromptHtml = `
-      <div style="margin-top: 16px; padding: 10px 14px; background: rgba(0, 214, 143, 0.1); border: 1px solid rgba(0, 214, 143, 0.3); border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: space-between;">
-        <span style="font-size: 12px; color: var(--green); font-weight: 700;">🔒 Paces Locked & Cloud Synced</span>
-        <button style="background:none; border:none; color:var(--text-muted); font-size:11px; text-decoration:underline; cursor:pointer;" onclick="unlockPaces(${myId})">Edit Paces</button>
+      <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px; line-height: 1.4;">
+        Apply a base pace to pre-fill all 3 legs below, then adjust individual legs as needed before locking.
       </div>
-    `;
-  }
+      <div style="display: flex; gap: 8px; align-items: center;">
+          <input type="number" id="basePaceMin" placeholder="Min" style="width: 60px; padding: 10px; background: var(--surface-3); border: 1px solid var(--border); color: white; border-radius: 6px; font-size: 16px; text-align: center;">
+          <span style="font-weight:bold;">:</span>
+          <input type="number" id="basePaceSec" placeholder="Sec" style="width: 60px; padding: 10px; background: var(--surface-3); border: 1px solid var(--border); color: white; border-radius: 6px; font-size: 16px; text-align: center;">
+          <button class="btn-manual" style="padding: 10px 14px; flex: 1; font-family:Outfit, sans-serif; font-size: 14px; font-weight: 700; border-radius: 6px; color:white; background: var(--surface-3); border-color:var(--border);" onclick="prefillAllLegInputs(${myId})">Apply to All</button>
+      </div>
+    </div>
+  `;
 
   let html = `
     <select class="runner-picker" id="myRunnerSelect" onchange="changeMyRunner(this.value)">
@@ -521,7 +513,7 @@ function renderMyLegsView() {
   `;
 
   html += renderContextHero(context, runner, myId);
-  html += pacePromptHtml; 
+  html += topPaceBarHtml; 
   html += `<div class="section-title" style="margin-top:24px;">Your 3 Legs</div>`;
 
   myLegs.forEach(leg => {
@@ -586,12 +578,10 @@ function renderMyLegsView() {
 
         ${!isComplete ? `
         <div class="pace-edit-row">
-          <span class="pace-label">Pace:</span>
-          <input class="pace-input" type="number" min="4" max="20" value="${pace.min}"
-            onchange="updatePace(${leg.leg}, this.value, this.nextElementSibling.nextElementSibling.value)">
+          <span class="pace-label">Target Pace:</span>
+          <input class="pace-input pace-leg-min" id="pace_min_${leg.leg}" type="number" min="4" max="20" value="${pace.min}">
           <span class="pace-sep">:</span>
-          <input class="pace-input" type="number" min="0" max="59" value="${pace.sec}"
-            onchange="updatePace(${leg.leg}, this.previousElementSibling.previousElementSibling.value, this.value)">
+          <input class="pace-input pace-leg-sec" id="pace_sec_${leg.leg}" type="number" min="0" max="59" value="${pace.sec}">
           <span class="pace-label">/mi</span>
           <span class="pace-est">= ${RaceEngine.formatDuration(summary.estimatedTime)}</span>
         </div>` : ''}
@@ -599,12 +589,62 @@ function renderMyLegsView() {
     `;
   });
 
+  // Master Lock & Save Action Card at the bottom
+  html += `
+    <div style="margin-top:24px; margin-bottom: 20px;">
+      <button class="btn-handoff btn-primary" style="font-size:17px; padding:18px;" onclick="lockAndSaveAllPaces(${myId})">
+        🔒 Lock & Save All Leg Paces
+      </button>
+      <div style="text-align:center; font-size:11px; color:var(--text-muted); margin-top:8px;">
+        Saves individual paces to engine state & cloud sync across all devices.
+      </div>
+    </div>
+  `;
+
   document.getElementById('viewMyLegs').innerHTML = html;
 }
 
-function unlockPaces(runnerId) {
-  localStorage.removeItem(`htc_paces_set_${runnerId}`);
+function prefillAllLegInputs(runnerId) {
+  const minVal = document.getElementById('basePaceMin').value;
+  const secVal = document.getElementById('basePaceSec').value;
+
+  if (!minVal) {
+    alert("Please enter minutes for the base pace.");
+    return;
+  }
+
+  const myLegs = engine.getRunnerLegs(runnerId);
+  myLegs.forEach(l => {
+    const minInput = document.getElementById(`pace_min_${l.leg}`);
+    const secInput = document.getElementById(`pace_sec_${l.leg}`);
+    if (minInput) minInput.value = minVal;
+    if (secInput) secInput.value = secVal || '00';
+  });
+
+  showToast("Paces pre-filled! Adjust individual legs or Lock & Save below.");
+}
+
+function lockAndSaveAllPaces(runnerId) {
+  const myLegs = engine.getRunnerLegs(runnerId);
+  let hasError = false;
+
+  myLegs.forEach(l => {
+    const minInput = document.getElementById(`pace_min_${l.leg}`);
+    const secInput = document.getElementById(`pace_sec_${l.leg}`);
+
+    if (minInput && secInput) {
+      const min = parseInt(minInput.value) || 10;
+      const sec = parseInt(secInput.value) || 0;
+      engine.setPace(l.leg, min, sec);
+    }
+  });
+
+  engine.saveState();
+  localStorage.setItem(`htc_paces_set_${runnerId}`, 'true');
+  
   renderMyLegsView();
+  renderHeader();
+  showToast("🔒 All leg paces locked & synced!");
 }
 
 function renderContextHero(context, runner, runnerId) {
@@ -1044,39 +1084,6 @@ function fixLoggedTime() {
 function changeMyRunner(val) {
   setMyRunnerId(parseInt(val));
   renderMyLegsView();
-  window.spriteAnimator.mount();
-}
-
-function applyBasePace(runnerId) {
-  const min = parseInt(document.getElementById('basePaceMin').value);
-  const sec = parseInt(document.getElementById('basePaceSec').value);
-  
-  if (isNaN(min) || isNaN(sec)) {
-    alert("Please enter a valid minutes and seconds pace.");
-    return;
-  }
-  
-  const myLegs = engine.getRunnerLegs(runnerId);
-  myLegs.forEach(l => {
-    engine.setPace(l.leg, min, sec);
-  });
-  
-  // Lock it in engine state and flag locally
-  engine.saveState();
-  localStorage.setItem(`htc_paces_set_${runnerId}`, 'true');
-  renderMyLegsView();
-  renderHeader();
-  showToast("🔒 Paces locked and saved to cloud sync!");
-}
-
-function updatePace(legNum, min, sec) {
-  engine.setPace(legNum, parseInt(min) || 10, parseInt(sec) || 0);
-  
-  const myId = getMyRunnerId();
-  localStorage.setItem(`htc_paces_set_${myId}`, 'true');
-  
-  renderMyLegsView();
-  renderHeader();
   window.spriteAnimator.mount();
 }
 
