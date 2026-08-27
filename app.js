@@ -8,7 +8,6 @@ window.onerror = function(msg, url, lineNo, columnNo, error) {
 };
 
 // --- HOTFIX: CLOUD SYNC RACE CONDITION PROTECTOR ---
-// Forces active memory to merge with any background data sync.js pulled from Firebase
 function safeguardMemorySync() {
   try {
     let stateKey = null;
@@ -667,8 +666,9 @@ function lockAndSaveAllPaces(runnerId) {
     if (minInput && secInput) {
       const min = parseInt(minInput.value) || 10;
       const sec = parseInt(secInput.value) || 0;
-      if (!engine.state.paces) engine.state.paces = {};
-      engine.state.paces[l.leg] = { min, sec };
+      
+      // FIX: Use the official engine API so the math cache refreshes correctly!
+      engine.setPace(l.leg, min, sec); 
     }
   });
 
