@@ -1,7 +1,7 @@
 // HTC 2026 Service Worker — Offline + Auto-Update
 // Bump this version string when you push updates to GitHub Pages.
 // Users will get the new version next time they open the app with signal.
-const CACHE_VERSION = 'htc-2026-v4';
+const CACHE_VERSION = 'htc-2026-v5';
 
 const ASSETS_TO_CACHE = [
   './',
