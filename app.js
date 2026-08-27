@@ -7,6 +7,34 @@ window.onerror = function(msg, url, lineNo, columnNo, error) {
   return false;
 };
 
+// --- HOTFIX: CLOUD SYNC RACE CONDITION PROTECTOR ---
+// Forces active memory to merge with any background data sync.js pulled from Firebase
+function safeguardMemorySync() {
+  try {
+    let stateKey = null;
+    for (let i = 0; i < localStorage.length; i++) {
+      let k = localStorage.key(i);
+      if (k && k.toLowerCase().includes('state')) {
+        stateKey = k;
+        break;
+      }
+    }
+    if (stateKey) {
+      let cloudState = JSON.parse(localStorage.getItem(stateKey));
+      if (cloudState && typeof cloudState === 'object') {
+        if (cloudState.paces) {
+          engine.state.paces = Object.assign({}, cloudState.paces, engine.state.paces || {});
+        }
+        if (cloudState.actuals) {
+          engine.state.actuals = Object.assign({}, cloudState.actuals, engine.state.actuals || {});
+        }
+      }
+    }
+  } catch(e) {
+    console.error("Safeguard error", e);
+  }
+}
+
 // --- CINEMATIC INTRO CONTROLLER ---
 const PROGRESS_DURATION_MS = 10500; 
 const AUTO_FINISH_MS = 17000;       
@@ -483,7 +511,6 @@ function renderMyLegsView() {
 
   const isLocked = hasRunnerSetPaces(myId);
   
-  // Top Banner: Pre-fill Quick Bar
   let topPaceBarHtml = `
     <div class="card card-glow-orange" style="margin-top:20px; padding: 16px;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
@@ -589,7 +616,6 @@ function renderMyLegsView() {
     `;
   });
 
-  // Master Lock & Save Action Card at the bottom
   html += `
     <div style="margin-top:24px; margin-bottom: 20px;">
       <button class="btn-handoff btn-primary" style="font-size:17px; padding:18px;" onclick="lockAndSaveAllPaces(${myId})">
@@ -602,6 +628,11 @@ function renderMyLegsView() {
   `;
 
   document.getElementById('viewMyLegs').innerHTML = html;
+}
+
+function unlockPaces(runnerId) {
+  localStorage.removeItem(`htc_paces_set_${runnerId}`);
+  renderMyLegsView();
 }
 
 function prefillAllLegInputs(runnerId) {
@@ -625,8 +656,9 @@ function prefillAllLegInputs(runnerId) {
 }
 
 function lockAndSaveAllPaces(runnerId) {
+  safeguardMemorySync(); // PROTECT AGAINST MEMORY OVERWRITES
+
   const myLegs = engine.getRunnerLegs(runnerId);
-  let hasError = false;
 
   myLegs.forEach(l => {
     const minInput = document.getElementById(`pace_min_${l.leg}`);
@@ -635,7 +667,8 @@ function lockAndSaveAllPaces(runnerId) {
     if (minInput && secInput) {
       const min = parseInt(minInput.value) || 10;
       const sec = parseInt(secInput.value) || 0;
-      engine.setPace(l.leg, min, sec);
+      if (!engine.state.paces) engine.state.paces = {};
+      engine.state.paces[l.leg] = { min, sec };
     }
   });
 
@@ -942,6 +975,7 @@ function exportBulkSync() {
 }
 
 async function importBulkSync() {
+  safeguardMemorySync(); // PROTECT AGAINST MEMORY OVERWRITES
   try {
     const text = await navigator.clipboard.readText();
     
@@ -991,18 +1025,21 @@ async function importBulkSync() {
 
 // --- ACTIONS ---
 function startRace() {
+  safeguardMemorySync(); // PROTECT AGAINST MEMORY OVERWRITES
   if (navigator.vibrate) navigator.vibrate([200]); 
   engine.logStart(1);
   renderView('viewRace');
 }
 
 function logHandoffNow() {
+  safeguardMemorySync(); // PROTECT AGAINST MEMORY OVERWRITES
   if (navigator.vibrate) navigator.vibrate([100, 50, 100]); 
   engine.logHandoff(engine.getCurrentLeg());
   renderView('viewRace');
 }
 
 function logManualHandoff() {
+  safeguardMemorySync(); // PROTECT AGAINST MEMORY OVERWRITES
   const input = document.getElementById('manualTime');
   if (!input || !input.value) return;
   const [hours, minutes] = input.value.split(':').map(Number);
@@ -1023,6 +1060,7 @@ function logManualHandoff() {
 }
 
 function undoLastHandoff() {
+  safeguardMemorySync(); // PROTECT AGAINST MEMORY OVERWRITES
   if (!confirm('Are you sure you want to undo the last handoff?')) return;
   
   const current = engine.getCurrentLeg();
@@ -1054,6 +1092,7 @@ function undoLastHandoff() {
 }
 
 function fixLoggedTime() {
+  safeguardMemorySync(); // PROTECT AGAINST MEMORY OVERWRITES
   const legStr = document.getElementById('fixLegSelect').value;
   const timeStr = document.getElementById('fixLegTime').value;
   if (!legStr || !timeStr) {
@@ -1089,7 +1128,7 @@ function changeMyRunner(val) {
 
 function confirmReset() {
   if (confirm('Reset ALL logged handoff times? \n\n(Don\'t worry, your custom runner paces will NOT be deleted).')) {
-    
+    safeguardMemorySync(); // PROTECT AGAINST MEMORY OVERWRITES
     const savedPaces = engine.state.paces ? JSON.parse(JSON.stringify(engine.state.paces)) : {};
     
     engine.resetState();
@@ -1177,13 +1216,11 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js').then((reg) => {
       console.log('✓ Service Worker Registered');
       
-      // Listen for background updates from GitHub
       reg.addEventListener('updatefound', () => {
         const newWorker = reg.installing;
         newWorker.addEventListener('statechange', () => {
           if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
             
-            // Show interactive interactive toast to force refresh
             const t = document.createElement('div');
             t.innerHTML = `🚀 New Update Ready! <button style="margin-left:12px; padding:6px 14px; background:#fff; color:var(--accent); border:none; border-radius:15px; font-weight:900; font-size:13px; cursor:pointer;" onclick="window.location.reload(true)">REFRESH</button>`;
             t.style.cssText = "position:fixed; bottom:90px; left:50%; transform:translateX(-50%); background:var(--accent); color:#fff; padding:12px 20px; border-radius:30px; font-weight:700; font-family:Outfit, sans-serif; z-index:999999; box-shadow:0 8px 24px rgba(0,0,0,0.5); font-size:14px; display:flex; align-items:center; animation: toastIn 0.3s ease-out;";
